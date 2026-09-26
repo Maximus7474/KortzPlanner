@@ -82,7 +82,7 @@ def run(num_players: int, artifacts: list[Artifact], client_set_bonus: int) -> N
         used_percent = sum(a.space_percent for a in bag)
         print(f"Player {i} bag ({used_percent:>3}% full, ${bag_value:>8,}):")
         for a in bag:
-            print(f"  - {a.name:<35} [{a.space_percent:>3}% ${a.value:>7,}]")
+            print(f"  - {a.name:<35} [ {a.space_percent:>}% | {a.value:>7,}$ ]")
         print()
 
     print(
