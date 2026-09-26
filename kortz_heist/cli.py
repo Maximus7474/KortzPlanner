@@ -76,12 +76,13 @@ def run(num_players: int, artifacts: list[Artifact], client_set_bonus: int) -> N
 
     result = solve(artifacts, num_players, client_set_bonus=client_set_bonus)
 
+    print()
     for i, bag in enumerate(result.assignment, start=1):
         bag_value = sum(a.value for a in bag)
         used_percent = sum(a.space_percent for a in bag)
-        print(f"Player {i} bag ({used_percent}% full, ${bag_value:,}):")
+        print(f"Player {i} bag ({used_percent:>3}% full, ${bag_value:>8,}):")
         for a in bag:
-            print(f"  - {a.name} [{a.type.value}, {a.space_percent}%, ${a.value:,}]")
+            print(f"  - {a.name:<35} [{a.space_percent:>3}% ${a.value:>7,}]")
         print()
 
     print(
@@ -89,6 +90,7 @@ def run(num_players: int, artifacts: list[Artifact], client_set_bonus: int) -> N
         f"(bonus: ${result.bonus_applied:,})"
     )
     print(f"TOTAL PAYOUT: ${result.total_value:,}")
+    print()
 
 
 def main() -> None:
