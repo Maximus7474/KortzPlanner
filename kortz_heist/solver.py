@@ -1,7 +1,6 @@
 """Optimizer: assign artifacts to players' bags to maximize total payout."""
 from dataclasses import dataclass
 from functools import lru_cache
-tuple
 from .models import Artifact, BAG_CAPACITY_UNITS
 
 
