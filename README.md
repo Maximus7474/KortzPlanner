@@ -60,6 +60,27 @@ asked for the new player count; none of the prices/flags need re-entering.
 To start a fresh heist, delete `session.json` (or answer `n`) and enter a
 new one.
 
+### Example Output
+
+```
+Player 1 bag (100% full, $ 330,500):
+  - Byzantine Hoops                     [ 10% |  32,000$ ]
+  - Oeuf de Coquard de Vouivre          [ 20% |  60,000$ ]
+  - Memento Non Mori (Diamond)          [ 30% |  97,500$ ]
+  - Art Deco Rings                      [ 10% |  31,000$ ]
+  - Pharaonic Bangles                   [ 10% |  31,000$ ]
+  - Coquard Rings                       [ 10% |  33,000$ ]
+  - Art Deco Circlets                   [ 10% |  46,000$ ]
+
+Player 2 bag (100% full, $ 307,000):
+  - Fertility Statue (Ivory)            [ 20% |  62,000$ ]
+  - Don't Forgo These Blueprints        [ 50% | 152,500$ ]
+  - Coquard Carcanet (Yellow Diamond)   [ 30% |  92,500$ ]
+
+Client set completed: True (bonus: $100,000)
+TOTAL PAYOUT: $737,500
+```
+
 ## Extending
 
 - **Real catalog**: fill in the rest of the roster in `catalog.py` (name +
