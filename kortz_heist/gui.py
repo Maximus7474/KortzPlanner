@@ -354,11 +354,20 @@ class KortzHeistApp(ttk.Frame):
             return
 
         raw_price = self.price_var.get().strip().replace(",", "").replace("$", "")
-        if not raw_price.isdigit():
-            self.status_var.set("Enter a whole-number price.")
+
+        try:
+            val = float(raw_price)
+            if val <= 0:
+                raise ValueError
+            # If input is under 1,000, assume it is shorthand for thousands (e.g., 115 -> 115000, 75.5 -> 75500)
+            if val < 1000:
+                val *= 1000
+
+            price = round(val)
+        except ValueError:
+            self.status_var.set("Enter a valid price (e.g., 115000 or 75.5 for 75000).")
             self.price_entry.focus_set()
             return
-        price = int(raw_price)
 
         art_type = CATALOG_BY_NAME[match]
         warning = price_warning(art_type, price)
