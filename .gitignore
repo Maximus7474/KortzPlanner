@@ -1,3 +1,6 @@
 .venv
 __pycache__
 session.json
+build
+dist
+KortzHeistOptimizer.spec
