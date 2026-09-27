@@ -51,8 +51,10 @@ class AutocompleteEntry(ttk.Entry):
     # -- filtering / popup lifecycle --
     def _matches(self, typed):
         if not typed:
-            return []
-        return [v for v in self._all_values if typed.lower() in v.lower()]
+            return ['No results']
+
+        values = [v for v in self._all_values if typed.lower() in v.lower()]
+        return values if len(values) > 0 else ['No results']
 
     def _on_keyrelease(self, event):
         if event.keysym in ("Up", "Down", "Return", "Escape", "Tab"):
