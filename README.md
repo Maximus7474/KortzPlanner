@@ -20,7 +20,16 @@ total payout, subject to each player having one bag of fixed capacity.
   solo-obtainable - that variable data is a `Session` (`session.py`).
 - Three specific artifacts make up the **client's request**. Securing all
   three - by any combination of players, not necessarily one - earns a
-  flat bonus on top of their individual values.
+  flat, fixed **$100,000 bonus** (`CLIENT_SET_BONUS` in `models.py`) on
+  top of their individual values.
+- Each type has a typical price range, used only to flag likely typos or
+  unusual values as you enter them - it never blocks or clamps a price:
+  | Type | Typical range |
+  |---|---|
+  | Artwork | $70,000 - $155,000 |
+  | Vertical case | $80,000 - $100,000 |
+  | Horizontal case, cushion | $30,000 - $40,000 |
+  | Horizontal case (plain) | $20,000 - $50,000 |
 - This is a multiple-knapsack assignment problem: which subset of items to
   take, and which player carries each, to maximize total value + bonus.
   `solver.solve()` finds the exact optimum via memoized search (fine for a
@@ -39,28 +48,37 @@ kortz_heist/
   session.py  - Session: this heist's prices + flags; build/save/load
   solver.py   - solve(artifacts, num_players, ...) -> SolveResult
   cli.py      - bare CLI: builds or reuses a session, prints the plan
+  gui.py      - Tkinter GUI: same workflow, point-and-click
+run_gui.py    - PyInstaller entry point for the GUI (see "Packaging" below)
 session.json  - saved automatically after building a session (gitignore
                 this if you don't want it committed)
 ```
 
 ## Running it
 
+CLI:
 ```
-python3 -m kortz_heist.cli
+python -m kortz_heist.cli
 ```
 
-First run: enter a price for each artifact on offer this heist (blank to
-skip one that isn't available), which three are the client's request,
-which are solo-unavailable, and the client-set bonus payout. This gets
-saved to `session.json`.
+GUI:
+```
+python -m kortz_heist.gui
+```
 
-**Reprocessing after a player-count change**: run it again - it detects
-the saved session and asks `Reuse it? [Y/n]`. Say yes, and you're only
-asked for the new player count; none of the prices/flags need re-entering.
-To start a fresh heist, delete `session.json` (or answer `n`) and enter a
-new one.
+First run (either one): enter a price for each artifact on offer this
+heist (out-of-range prices get flagged inline but are still accepted),
+which three are the client's request, and which are solo-unavailable.
+This gets saved to `session.json`. (The client-set bonus is fixed, so it
+isn't asked for.)
 
-### Example Output
+**Reprocessing after a player-count change**: run it again (CLI or GUI) -
+it detects the saved session and offers to reuse it. Accept, and you're
+only asked for the new player count; none of the prices/flags need
+re-entering. To start a fresh heist, delete `session.json` (or decline the
+reuse prompt / use File > New session in the GUI) and enter a new one.
+
+### CLI Output
 
 ```
 Player 1 bag (100% full, $ 330,500):
@@ -81,15 +99,54 @@ Client set completed: True (bonus: $100,000)
 TOTAL PAYOUT: $737,500
 ```
 
+## Using the GUI
+
+- **Add an artifact**: type its name into the Name field - matching
+  catalog entries appear as you type. Press **Enter** (or Tab) once the
+  name is filled in to jump to the Price field; type the price and press
+  **Enter** to add it to the table below. Focus returns to Name so you can
+  keep adding items back-to-back without touching the mouse.
+- **Client Target / Solo OK**: click either cell in an item's row to
+  toggle it (☐/☑). Only three items can be marked as the client's request
+  at once - the app will tell you if you try a fourth.
+- **Fix a mistake**: double-click a row to open an edit dialog (change
+  price, toggle flags, or remove the item entirely); Enter saves, Esc
+  cancels. Or select a row and click "Remove selected" / press Delete.
+- **File menu**: "New session" clears everything, "Reload saved session"
+  reverts to what's on disk, discarding unsaved changes.
+- Every add/edit/remove/toggle auto-saves to `session.json`.
+- Pick the player count and click "Solve" (or press Enter with focus on
+  the player-count box) to see the bag assignment in the Plan panel.
+
+## Packaging the GUI with PyInstaller
+
+From the project root (same folder as `run_gui.py`):
+```
+pip install pyinstaller
+pyinstaller --onefile --windowed --name KortzHeistOptimizer run_gui.py
+```
+The executable lands in `dist/`. Notes:
+- `--windowed` suppresses the console window (drop it if you want the
+  console visible for debugging).
+- Tkinter is part of the standard library, so there's nothing extra to
+  bundle for the GUI itself; on Linux, make sure the *build* machine has
+  `python3-tk` installed (e.g. `apt install python3-tk`) since PyInstaller
+  needs it present to bundle Tcl/Tk - end users don't need it installed.
+- The bundled executable writes/reads `session.json` next to itself only
+  if run from a writable location; if you hit permission errors when
+  running from somewhere like `Program Files`, move the executable to a
+  writable folder or adjust `DEFAULT_SESSION_PATH` in `session.py`.
+
 ## Extending
 
 - **Real catalog**: fill in the rest of the roster in `catalog.py` (name +
   type only - no price, since that's per-heist).
-- **GUI**: `solver.solve()`, `models`, `catalog`, and `session` have no CLI
-  dependency. A GUI just needs to: build a `{name: price}` dict (e.g. from
-  a form seeded with `CATALOG`), call `build_session(...)`, `save_session`
-  it, then `solve(session.artifacts, num_players, client_set_bonus=...)`
-  and render `SolveResult.assignment` / `.left_behind` / `.total_value` /
+- **A different GUI**: `solver.solve()`, `models`, `catalog`, and
+  `session` have no UI dependency - `gui.py` is just one consumer of them.
+  Any other frontend can build a `{name: price}` dict, call
+  `build_session(...)`, `save_session` it, then
+  `solve(session.artifacts, num_players, client_set_bonus=...)` and render
+  `SolveResult.assignment` / `.left_behind` / `.total_value` /
   `.client_set_completed`. `load_session()` covers reprocessing when the
   player count changes.
 - **Bag capacity assumption**: currently one 100%-capacity bag per player.
