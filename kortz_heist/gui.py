@@ -64,9 +64,6 @@ class AutocompleteEntry(ttk.Entry):
             self._close_popup()
 
     def _show_popup(self, matches):
-        if self._listbox is None:
-            return
-
         if self._popup is None:
             self._popup = tk.Toplevel(self)
             self._popup.wm_overrideredirect(True)
@@ -77,6 +74,9 @@ class AutocompleteEntry(ttk.Entry):
             self._listbox = tk.Listbox(self._popup, activestyle="dotbox", exportselection=False)
             self._listbox.pack(fill="both", expand=True)
             self._listbox.bind("<ButtonRelease-1>", self._on_listbox_click)
+
+        if self._listbox is None:
+            return
 
         x = self.winfo_rootx()
         y = self.winfo_rooty() + self.winfo_height()
