@@ -1,8 +1,25 @@
-# Kortz Center Heist Loot Optimizer
+<h1 align="center">Kortz Center Heist Loot Optimizer</h1>
+
+<p align="center">
+  <a href="https://github.com/Maximus7474/KortzPlanner/releases/latest/download/KortzHeistOptimizer-windows.exe">
+    <img src="https://img.shields.io/badge/Download-Windows-blue?style=for-the-badge&logo=windows" alt="Download Windows" />
+  </a>
+  <a href="https://github.com/Maximus7474/KortzPlanner/releases/latest/download/KortzHeistOptimizer-macos">
+    <img src="https://img.shields.io/badge/Download-macOS-black?style=for-the-badge&logo=apple" alt="Download macOS" />
+  </a>
+  <a href="https://github.com/Maximus7474/KortzPlanner/releases/latest/download/KortzHeistOptimizer-linux">
+    <img src="https://img.shields.io/badge/Download-Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black" alt="Download Linux" />
+  </a>
+</p>
 
 Given a list of lootable artifacts (paintings, cases, etc.) and a crew size
 (1-4 players), works out which items each player should carry to maximize
 total payout, subject to each player having one bag of fixed capacity.
+
+<details>
+  <summary>GUI Preview</summary>
+  <img width="873" height="696" alt="image" src="https://github.com/user-attachments/assets/4f65840b-b817-44f2-ba20-02e4728d54f5" />
+</details>
 
 ## How it models the problem
 
