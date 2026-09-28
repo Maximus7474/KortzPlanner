@@ -3,9 +3,8 @@
 Layout:
 - "Add artifact" row: type a name (autocomplete against the static
   catalog), Tab/Enter to the price field, Enter to add it to the table.
-- Table: one row per added artifact. Click the "Client Target" or
-  "Solo OK" cell to toggle it. Double-click a row to edit its price or
-  remove it.
+- Table: one row per added artifact. Click column headers to sort.
+  Click the "Client Target" or "Solo OK" cell to toggle it.
 - Bottom: player count + Skip buyer request toggle + Solve.
 - Results panel: the resulting bag assignment, same info the CLI prints.
 """
@@ -179,6 +178,10 @@ class KortzHeistApp(ttk.Frame):
         #          "client_target": bool, "solo_available": bool}
         self.items = {}
 
+        # Sorting state
+        self._sort_column = None
+        self._sort_reverse = False
+
         self.pack(fill="both", expand=True)
         self._build_menu()
         self._build_widgets()
@@ -224,7 +227,7 @@ class KortzHeistApp(ttk.Frame):
 
         columns = ("name", "type", "price", "client", "solo")
         self.tree = ttk.Treeview(table_frame, columns=columns, show="headings", height=10)
-        headings = {
+        self._headings = {
             "name": "Artifact",
             "type": "Type",
             "price": "Price",
@@ -233,7 +236,7 @@ class KortzHeistApp(ttk.Frame):
         }
         widths = {"name": 180, "type": 160, "price": 90, "client": 100, "solo": 80}
         for col in columns:
-            self.tree.heading(col, text=headings[col])
+            self.tree.heading(col, text=self._headings[col], command=lambda c=col: self._sort_by_column(c))
             anchor = "center" if col in ("client", "solo") else "w"
             self.tree.column(col, width=widths[col], anchor=anchor)
         self.tree.pack(side="left", fill="both", expand=True)
@@ -317,13 +320,13 @@ class KortzHeistApp(ttk.Frame):
     def _save(self):
         save_session(Session(artifacts=self._current_artifacts(), client_set_bonus=CLIENT_SET_BONUS))
 
-    def _current_artifacts(self):
+    def _current_artifacts(self, ignore_client_targets: bool = False):
         return [
             Artifact(
                 name=name,
                 type=d["type"],
                 value=d["price"],
-                is_client_target=d["client_target"],
+                is_client_target=False if ignore_client_targets else d["client_target"],
                 solo_available=d["solo_available"],
             )
             for name, d in self.items.items()
@@ -394,9 +397,50 @@ class KortzHeistApp(ttk.Frame):
         self.price_var.set("")
         self.name_box.focus_set()
 
+    # sorting logic
+    def _sort_by_column(self, col):
+        if self._sort_column == col:
+            if self._sort_reverse:
+                self._sort_reverse = False
+                self._sort_column = None
+            else:
+                self._sort_reverse = not self._sort_reverse
+        else:
+            self._sort_column = col
+            self._sort_reverse = False
+
+        # Update header texts to display sorting indicators
+        for column_key, base_title in self._headings.items():
+            if column_key == self._sort_column:
+                indicator = " ▲" if not self._sort_reverse else " ▼"
+                self.tree.heading(column_key, text=base_title + indicator)
+            else:
+                self.tree.heading(column_key, text=base_title)
+
+        self._refresh_table()
+
+    def _get_sort_key(self, item_entry):
+        name, d = item_entry
+        if self._sort_column == "name":
+            return name.lower()
+        elif self._sort_column == "type":
+            return d["type"].value.lower()
+        elif self._sort_column == "price":
+            return d["price"]
+        elif self._sort_column == "client":
+            return d["client_target"]
+        elif self._sort_column == "solo":
+            return d["solo_available"]
+        return name.lower()
+
     def _refresh_table(self):
         self.tree.delete(*self.tree.get_children())
-        for name, d in self.items.items():
+
+        item_entries = list(self.items.items())
+        if self._sort_column:
+            item_entries.sort(key=self._get_sort_key, reverse=self._sort_reverse)
+
+        for name, d in item_entries:
             warning = price_warning(d["type"], d["price"])
             tags = ("outlier",) if warning else ()
             self.tree.insert(
@@ -528,11 +572,12 @@ class KortzHeistApp(ttk.Frame):
             return
         num_players = int(self.players_var.get())
         skip_buyer = self.skip_buyer_var.get()
-        artifacts = self._current_artifacts()
+        artifacts = self._current_artifacts(ignore_client_targets=skip_buyer)
 
         lines = []
         if skip_buyer:
             lines.append("NOTE: Ignoring buyer/client set requirements.")
+            lines.append("")
 
         if num_players == 1:
             solo_locked = [a for a in artifacts if not a.solo_available]
@@ -543,12 +588,7 @@ class KortzHeistApp(ttk.Frame):
 
         result = None
         try:
-            result = solve(
-                artifacts,
-                num_players,
-                client_set_bonus=CLIENT_SET_BONUS,
-                require_client_set=not self.skip_buyer_var.get()
-            )
+            result = solve(artifacts, num_players, client_set_bonus=CLIENT_SET_BONUS)
         except (ValueError, RuntimeError, KeyError) as error:
             print('Failed to solve the task')
             print(error)
@@ -560,7 +600,7 @@ class KortzHeistApp(ttk.Frame):
                 used_percent = sum(a.space_percent for a in bag)
                 lines.append(f"Player {i} bag ({used_percent}% full, ${bag_value:,}):")
                 for a in bag:
-                    lines.append(f"  - {a.name:<35} [ {a.space_percent:>}% | {a.value:>7,}$ ] {"BR" if a.is_client_target else ""}")
+                    lines.append(f"  - {a.name:<35} [ {a.space_percent:>}% | {a.value:>7,}$ ]")
                 lines.append("")
 
             lines.append(f"Client set completed:  {result.client_set_completed} (bonus: ${result.bonus_applied:,})")
