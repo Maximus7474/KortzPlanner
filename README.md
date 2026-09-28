@@ -16,6 +16,9 @@ Given a list of lootable artifacts (paintings, cases, etc.) and a crew size
 (1-4 players), works out which items each player should carry to maximize
 total payout, subject to each player having one bag of fixed capacity.
 
+> [!NOTE]
+> Still needs further evaluation to adapt for second runs in a given week, so I can add further settings to properly estimate revenue of a given run.
+
 <details>
   <summary>GUI Preview</summary>
   <img width="873" height="696" alt="image" src="https://github.com/user-attachments/assets/4f65840b-b817-44f2-ba20-02e4728d54f5" />
