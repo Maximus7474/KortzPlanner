@@ -6,7 +6,7 @@ Layout:
 - Table: one row per added artifact. Click the "Client Target" or
   "Solo OK" cell to toggle it. Double-click a row to edit its price or
   remove it.
-- Bottom: player count + Solve.
+- Bottom: player count + Skip buyer request toggle + Solve.
 - Results panel: the resulting bag assignment, same info the CLI prints.
 """
 import tkinter as tk
@@ -258,6 +258,13 @@ class KortzHeistApp(ttk.Frame):
         )
         self.players_box.pack(side="left", padx=(4, 12))
         self.players_box.bind("<Return>", lambda e: self._on_solve())
+
+        # Toggle to ignore/skip buyer requirements
+        self.skip_buyer_var = tk.BooleanVar(value=False)
+        self.skip_buyer_check = ttk.Checkbutton(
+            bottom, text="Skip buyer request", variable=self.skip_buyer_var
+        )
+        self.skip_buyer_check.pack(side="left", padx=(0, 12))
 
         self.solve_btn = ttk.Button(bottom, text="Solve (Enter)", command=self._on_solve)
         self.solve_btn.pack(side="left")
@@ -520,9 +527,13 @@ class KortzHeistApp(ttk.Frame):
             messagebox.showinfo("Nothing to solve", "Add at least one artifact first.")
             return
         num_players = int(self.players_var.get())
+        skip_buyer = self.skip_buyer_var.get()
         artifacts = self._current_artifacts()
 
         lines = []
+        if skip_buyer:
+            lines.append("NOTE: Ignoring buyer/client set requirements.")
+
         if num_players == 1:
             solo_locked = [a for a in artifacts if not a.solo_available]
             if solo_locked:
@@ -532,7 +543,12 @@ class KortzHeistApp(ttk.Frame):
 
         result = None
         try:
-            result = solve(artifacts, num_players, client_set_bonus=CLIENT_SET_BONUS)
+            result = solve(
+                artifacts,
+                num_players,
+                client_set_bonus=CLIENT_SET_BONUS,
+                require_client_set=not self.skip_buyer_var.get()
+            )
         except (ValueError, RuntimeError, KeyError) as error:
             print('Failed to solve the task')
             print(error)
@@ -544,11 +560,11 @@ class KortzHeistApp(ttk.Frame):
                 used_percent = sum(a.space_percent for a in bag)
                 lines.append(f"Player {i} bag ({used_percent}% full, ${bag_value:,}):")
                 for a in bag:
-                    lines.append(f"  - {a.name:<35} [ {a.space_percent:>}% | {a.value:>7,}$ ]")
+                    lines.append(f"  - {a.name:<35} [ {a.space_percent:>}% | {a.value:>7,}$ ] {"BR" if a.is_client_target else ""}")
                 lines.append("")
 
             lines.append(f"Client set completed:  {result.client_set_completed} (bonus: ${result.bonus_applied:,})")
-            lines.append(f"TOTAL PAYOUT:         ${result.total_value:,}")
+            lines.append(f"TOTAL PAYOUT:          ${result.total_value:,}")
 
         self.results_text.configure(state="normal")
         self.results_text.delete("1.0", tk.END)
