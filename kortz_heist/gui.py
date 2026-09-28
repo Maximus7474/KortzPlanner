@@ -530,18 +530,25 @@ class KortzHeistApp(ttk.Frame):
                 lines.extend(f"  - {a.name}" for a in solo_locked)
                 lines.append("")
 
-        result = solve(artifacts, num_players, client_set_bonus=CLIENT_SET_BONUS)
+        result = None
+        try:
+            result = solve(artifacts, num_players, client_set_bonus=CLIENT_SET_BONUS)
+        except (ValueError, RuntimeError, KeyError) as error:
+            print('Failed to solve the task')
+            print(error)
+            lines.append(f"ERROR: {error}")
 
-        for i, bag in enumerate(result.assignment, start=1):
-            bag_value = sum(a.value for a in bag)
-            used_percent = sum(a.space_percent for a in bag)
-            lines.append(f"Player {i} bag ({used_percent}% full, ${bag_value:,}):")
-            for a in bag:
-                lines.append(f"  - {a.name:<35} [ {a.space_percent:>}% | {a.value:>7,}$ ]")
-            lines.append("")
+        if result:
+            for i, bag in enumerate(result.assignment, start=1):
+                bag_value = sum(a.value for a in bag)
+                used_percent = sum(a.space_percent for a in bag)
+                lines.append(f"Player {i} bag ({used_percent}% full, ${bag_value:,}):")
+                for a in bag:
+                    lines.append(f"  - {a.name:<35} [ {a.space_percent:>}% | {a.value:>7,}$ ]")
+                lines.append("")
 
-        lines.append(f"Client set completed:  {result.client_set_completed} (bonus: ${result.bonus_applied:,})")
-        lines.append(f"TOTAL PAYOUT:         ${result.total_value:,}")
+            lines.append(f"Client set completed:  {result.client_set_completed} (bonus: ${result.bonus_applied:,})")
+            lines.append(f"TOTAL PAYOUT:         ${result.total_value:,}")
 
         self.results_text.configure(state="normal")
         self.results_text.delete("1.0", tk.END)
