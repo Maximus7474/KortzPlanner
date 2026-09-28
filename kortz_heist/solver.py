@@ -1,7 +1,10 @@
 """Optimizer: assign artifacts to players' bags to maximize total payout."""
+import math
 from dataclasses import dataclass
 from functools import lru_cache
 from .models import Artifact, BAG_CAPACITY_UNITS
+
+_INFEASIBLE = -math.inf
 
 
 @dataclass
@@ -18,6 +21,7 @@ def solve(
     num_players: int,
     bag_capacity_units: int = BAG_CAPACITY_UNITS,
     client_set_bonus: int = 0,
+    require_client_set: bool = True,
 ) -> SolveResult:
     """Find the assignment of artifacts to players that maximizes total
     payout (item values, plus the client-set bonus if all client-target
@@ -35,14 +39,19 @@ def solve(
     client_target_idxs = [i for i, a in enumerate(items) if a.is_client_target]
     client_bit = {idx: 1 << pos for pos, idx in enumerate(client_target_idxs)}
     full_client_mask = (1 << len(client_target_idxs)) - 1
+    must_complete_set = require_client_set and bool(full_client_mask)
 
     @lru_cache(maxsize=None)
-    def best(i: int, caps: tuple[int, ...], collected_mask: int) -> tuple[int, tuple]:
+    def best(i: int, caps: tuple[int, ...], collected_mask: int) -> tuple[float, tuple]:
         """Returns (best_value_from_here_on, decisions) where decisions is a
-        tuple of (item_index, player_index_or_None)."""
+        tuple of (item_index, player_index_or_None). The value is
+        _INFEASIBLE when the client set is required but can't be completed
+        from this state."""
         if i == n:
-            bonus = client_set_bonus if full_client_mask and collected_mask == full_client_mask else 0
-            return bonus, ()
+            set_completed = bool(full_client_mask) and collected_mask == full_client_mask
+            if must_complete_set and not set_completed:
+                return _INFEASIBLE, ()
+            return (client_set_bonus if set_completed else 0), ()
 
         item = items[i]
         cost = item.space_units
@@ -70,6 +79,12 @@ def solve(
     total_value, trace = best(0, start_caps, 0)
     best.cache_clear()  # this solve's cache is only useful within this call
 
+    if total_value == _INFEASIBLE:
+        raise ValueError(
+            "The client's request can't be completed with this many players "
+            "and bags - every client-target item can't fit at once."
+        )
+
     assignment: list[list[Artifact]] = [[] for _ in range(num_players)]
     left_behind: list[Artifact] = []
     assigned_idxs = set()
@@ -88,7 +103,7 @@ def solve(
     return SolveResult(
         assignment=assignment,
         left_behind=left_behind,
-        total_value=total_value,
+        total_value=round(total_value),
         client_set_completed=client_set_completed,
         bonus_applied=bonus_applied,
     )
