@@ -23,8 +23,8 @@ SPACE_COST_PERCENT = {
 # so a typo or an unusually high value doesn't slip through unnoticed.
 TYPICAL_PRICE_RANGE = {
     ArtifactType.ARTWORK: (70_000, 155_000),
-    ArtifactType.VERTICAL_CASE: (80_000, 100_000),
-    ArtifactType.HORIZONTAL_CASE_CUSHION: (30_000, 70_000),
+    ArtifactType.VERTICAL_CASE: (80_000, 120_000),
+    ArtifactType.HORIZONTAL_CASE_CUSHION: (30_000, 80_000),
     ArtifactType.HORIZONTAL_CASE: (20_000, 50_000),
 }
 
