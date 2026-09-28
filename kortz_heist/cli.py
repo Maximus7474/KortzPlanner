@@ -74,7 +74,12 @@ def run(num_players: int, artifacts: list[Artifact], client_set_bonus: int) -> N
                 print(f"  - {a.name}")
             print()
 
-    result = solve(artifacts, num_players, client_set_bonus=client_set_bonus)
+    try:
+        result = solve(artifacts, num_players, client_set_bonus=client_set_bonus)
+    except (ValueError, RuntimeError, KeyError) as error:
+        print('Failed to solve the task')
+        print(error)
+        return
 
     print()
     for i, bag in enumerate(result.assignment, start=1):
