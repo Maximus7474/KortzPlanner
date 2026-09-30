@@ -22,9 +22,9 @@ SPACE_COST_PERCENT = {
 # entering data - out-of-range prices are still accepted, just called out
 # so a typo or an unusually high value doesn't slip through unnoticed.
 TYPICAL_PRICE_RANGE = {
-    ArtifactType.ARTWORK: (70_000, 155_000),
+    ArtifactType.ARTWORK: (70_000, 160_000),
     ArtifactType.VERTICAL_CASE: (70_000, 130_000),
-    ArtifactType.HORIZONTAL_CASE_CUSHION: (30_000, 80_000),
+    ArtifactType.HORIZONTAL_CASE_CUSHION: (30_000, 90_000),
     ArtifactType.HORIZONTAL_CASE: (20_000, 50_000),
 }
 
