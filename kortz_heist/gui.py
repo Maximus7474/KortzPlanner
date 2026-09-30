@@ -5,7 +5,7 @@ Layout:
   catalog), Tab/Enter to the price field, Enter to add it to the table.
 - Table: one row per added artifact. Click column headers to sort.
   Click the "Client Target" or "Solo OK" cell to toggle it.
-- Bottom: player count + Skip buyer request toggle + Solve.
+- Bottom: player count + options + action buttons.
 - Results panel: the resulting bag assignment, same info the CLI prints.
 """
 import tkinter as tk
@@ -248,41 +248,62 @@ class KortzHeistApp(ttk.Frame):
         self.tree.tag_configure("outlier", background="#fff3cd")
         self.tree.bind("<Button-1>", self._on_tree_click)
         self.tree.bind("<Double-1>", self._on_tree_double_click)
-        self.tree.bind("<Delete>", self._on_tree_delete)
 
-        bottom = ttk.Frame(self)
-        bottom.pack(fill="x")
+        # controls / options section
+        controls_frame = ttk.LabelFrame(self, text="Configuration & Controls", padding=8)
+        controls_frame.pack(fill="x", pady=(0, 8))
 
-        ttk.Label(bottom, text="Players:").pack(side="left")
+        # config row: players & toggles
+        cfg_row = ttk.Frame(controls_frame)
+        cfg_row.pack(fill="x", pady=(0, 6))
+
+        ttk.Label(cfg_row, text="Players:").pack(side="left")
         self.players_var = tk.StringVar(value="2")
         self.players_box = ttk.Combobox(
-            bottom, textvariable=self.players_var, values=["1", "2", "3", "4"],
+            cfg_row, textvariable=self.players_var, values=["1", "2", "3", "4"],
             width=3, state="readonly",
         )
-        self.players_box.pack(side="left", padx=(4, 12))
+        self.players_box.pack(side="left", padx=(4, 16))
+        self.players_box.bind("<<ComboboxSelected>>", self._update_solo_options)
         self.players_box.bind("<Return>", lambda e: self._on_solve())
 
-        # Toggle to ignore/skip buyer requirements
         self.skip_buyer_var = tk.BooleanVar(value=False)
         self.skip_buyer_check = ttk.Checkbutton(
-            bottom, text="Skip buyer request", variable=self.skip_buyer_var
+            cfg_row, text="Ignore buyer request", variable=self.skip_buyer_var
         )
-        self.skip_buyer_check.pack(side="left", padx=(0, 12))
+        self.skip_buyer_check.pack(side="left", padx=(0, 16))
 
-        self.solve_btn = ttk.Button(bottom, text="Solve (Enter)", command=self._on_solve)
-        self.solve_btn.pack(side="left")
-
-        ttk.Button(bottom, text="Remove selected", command=self._on_remove_selected).pack(
-            side="left", padx=(12, 0)
+        self.skip_inaccessible_var = tk.BooleanVar(value=False)
+        self.skip_inaccessible_check = ttk.Checkbutton(
+            cfg_row, text="Skip inaccessible loot (solo)", variable=self.skip_inaccessible_var
         )
-        ttk.Button(bottom, text="Clear all", command=self._on_clear_all).pack(side="left", padx=(6, 0))
+        self.skip_inaccessible_check.pack(side="left")
 
-        results_frame = ttk.LabelFrame(self, text="Plan", padding=8)
-        results_frame.pack(fill="both", expand=True, pady=(8, 0))
-        self.results_text = tk.Text(results_frame, height=14, wrap="word", state="disabled")
+        # action button row
+        btn_row = ttk.Frame(controls_frame)
+        btn_row.pack(fill="x")
+
+        self.solve_btn = ttk.Button(btn_row, text="Solve Plan (Enter)", command=self._on_solve)
+        self.solve_btn.pack(side="left", padx=(0, 12))
+
+        ttk.Button(btn_row, text="Clear All", command=self._on_clear_all).pack(side="left")
+
+        results_frame = ttk.LabelFrame(self, text="Optimized Plan Output", padding=8)
+        results_frame.pack(fill="both", expand=True)
+        self.results_text = tk.Text(results_frame, height=12, wrap="word", state="disabled")
         self.results_text.pack(fill="both", expand=True)
 
+        self._update_solo_options()
         self.name_box.focus_set()
+
+    def _update_solo_options(self, event=None):
+        """Enable/disable solo options based on the player count."""
+        is_solo = self.players_var.get() == "1"
+        if is_solo:
+            self.skip_inaccessible_check.configure(state="normal")
+        else:
+            self.skip_inaccessible_check.configure(state="disabled")
+            self.skip_inaccessible_var.set(False)
 
     # session I/O
     def _maybe_offer_saved_session(self):
@@ -320,13 +341,13 @@ class KortzHeistApp(ttk.Frame):
     def _save(self):
         save_session(Session(artifacts=self._current_artifacts(), client_set_bonus=CLIENT_SET_BONUS))
 
-    def _current_artifacts(self, ignore_client_targets: bool = False):
+    def _current_artifacts(self):
         return [
             Artifact(
                 name=name,
                 type=d["type"],
                 value=d["price"],
-                is_client_target=False if ignore_client_targets else d["client_target"],
+                is_client_target=d["client_target"],
                 solo_available=d["solo_available"],
             )
             for name, d in self.items.items()
@@ -369,7 +390,6 @@ class KortzHeistApp(ttk.Frame):
             val = float(raw_price)
             if val <= 0:
                 raise ValueError
-            # If input is under 1,000, assume it is shorthand for thousands (e.g., 115 -> 115000, 75.5 -> 75500)
             if val < 1000:
                 val *= 1000
 
@@ -409,7 +429,6 @@ class KortzHeistApp(ttk.Frame):
             self._sort_column = col
             self._sort_reverse = False
 
-        # Update header texts to display sorting indicators
         for column_key, base_title in self._headings.items():
             if column_key == self._sort_column:
                 indicator = " ▲" if not self._sort_reverse else " ▼"
@@ -484,15 +503,6 @@ class KortzHeistApp(ttk.Frame):
         row = self.tree.identify_row(event.y)
         if row:
             self._open_edit_dialog(row)
-
-    def _on_tree_delete(self, event):
-        for row in self.tree.selection():
-            self.items.pop(row, None)
-        self._refresh_table()
-        self._save()
-
-    def _on_remove_selected(self):
-        self._on_tree_delete(None)
 
     def _on_clear_all(self):
         if self.items and not messagebox.askyesno("Clear all", "Remove every item from the plan?"):
@@ -570,40 +580,49 @@ class KortzHeistApp(ttk.Frame):
         if not self.items:
             messagebox.showinfo("Nothing to solve", "Add at least one artifact first.")
             return
+
         num_players = int(self.players_var.get())
         skip_buyer = self.skip_buyer_var.get()
-        artifacts = self._current_artifacts(ignore_client_targets=skip_buyer)
+        skip_inaccessible = self.skip_inaccessible_var.get()
+        artifacts = self._current_artifacts()
 
         lines = []
         if skip_buyer:
-            lines.append("NOTE: Ignoring buyer/client set requirements.")
-            lines.append("")
+            lines.append("NOTE: Fulfilling buyer request is optional (maximizing profit).")
 
         if num_players == 1:
             solo_locked = [a for a in artifacts if not a.solo_available]
             if solo_locked:
-                lines.append("NOTE: running solo - these may not actually be obtainable:")
-                lines.extend(f"  - {a.name}" for a in solo_locked)
-                lines.append("")
+                if skip_inaccessible:
+                    lines.append("NOTE: Skipping inaccessible items for solo run.")
+                else:
+                    lines.append("NOTE: Running solo - these items require 2+ players:")
+                    lines.extend(f"  - {a.name}" for a in solo_locked)
+            lines.append("")
 
         result = None
         try:
-            result = solve(artifacts, num_players, client_set_bonus=CLIENT_SET_BONUS)
-        except (ValueError, RuntimeError, KeyError) as error:
-            print('Failed to solve the task')
-            print(error)
+            result = solve(
+                artifacts,
+                num_players,
+                client_set_bonus=CLIENT_SET_BONUS,
+                require_client_set=not skip_buyer,
+                skip_inaccessible=skip_inaccessible,
+            )
+        except ValueError as error:
             lines.append(f"ERROR: {error}")
 
         if result:
             for i, bag in enumerate(result.assignment, start=1):
                 bag_value = sum(a.value for a in bag)
                 used_percent = sum(a.space_percent for a in bag)
-                lines.append(f"Player {i} bag ({used_percent}% full, ${bag_value:,}):")
+                lines.append(f"Player {i} Bag ({used_percent}% full | ${bag_value:,}):")
                 for a in bag:
                     flags = []
-                    if a.is_client_target: flags.append('REQUEST')
+                    if a.is_client_target:
+                        flags.append("REQ")
                     if num_players == 1 and not a.solo_available:
-                        flags.append('LOCKED')
+                        flags.append("LOCKED")
 
                     flag_str = f" [{', '.join(flags)}]" if flags else ""
                     lines.append(f"  - {a.name:<30} {a.space_percent:>3}% | ${a.value:>7,}{flag_str}")
