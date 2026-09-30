@@ -286,7 +286,8 @@ class KortzHeistApp(ttk.Frame):
         self.solve_btn = ttk.Button(btn_row, text="Solve Plan (Enter)", command=self._on_solve)
         self.solve_btn.pack(side="left", padx=(0, 12))
 
-        ttk.Button(btn_row, text="Clear All", command=self._on_clear_all).pack(side="left")
+        self.clear_btn = ttk.Button(btn_row, text="Clear All", command=self._on_clear_all)
+        self.clear_btn.pack(side="left")
 
         results_frame = ttk.LabelFrame(self, text="Optimized Plan Output", padding=8)
         results_frame.pack(fill="both", expand=True)
@@ -581,6 +582,13 @@ class KortzHeistApp(ttk.Frame):
             messagebox.showinfo("Nothing to solve", "Add at least one artifact first.")
             return
 
+        self.solve_btn.configure(state="disabled", text="Calculating...")
+        self.clear_btn.configure(state="disabled")
+
+        # force redraw prior to heavier computing task
+        # (is the case on 2+ players)
+        self.update_idletasks()
+
         num_players = int(self.players_var.get())
         skip_buyer = self.skip_buyer_var.get()
         skip_inaccessible = self.skip_inaccessible_var.get()
@@ -611,6 +619,9 @@ class KortzHeistApp(ttk.Frame):
             )
         except ValueError as error:
             lines.append(f"ERROR: {error}")
+        finally:
+            self.solve_btn.configure(state="normal", text="Solve Plan (Enter)")
+            self.clear_btn.configure(state="normal")
 
         if result:
             for i, bag in enumerate(result.assignment, start=1):
