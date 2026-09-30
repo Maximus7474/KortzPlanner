@@ -600,7 +600,13 @@ class KortzHeistApp(ttk.Frame):
                 used_percent = sum(a.space_percent for a in bag)
                 lines.append(f"Player {i} bag ({used_percent}% full, ${bag_value:,}):")
                 for a in bag:
-                    lines.append(f"  - {a.name:<35} [ {a.space_percent:>}% | {a.value:>7,}$ ]")
+                    flags = []
+                    if a.is_client_target: flags.append('REQUEST')
+                    if num_players == 1 and not a.solo_available:
+                        flags.append('LOCKED')
+
+                    flag_str = f" [{', '.join(flags)}]" if flags else ""
+                    lines.append(f"  - {a.name:<30} {a.space_percent:>3}% | ${a.value:>7,}{flag_str}")
                 lines.append("")
 
             lines.append(f"Client set completed:  {result.client_set_completed} (bonus: ${result.bonus_applied:,})")
