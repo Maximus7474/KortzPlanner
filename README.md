@@ -76,15 +76,31 @@ session.json  - saved automatically after building a session (gitignore
 
 ## Running it
 
-CLI:
+### CLI (Command-Line Interface)
+Run from a terminal:
 ```
 python -m kortz_heist.cli
 ```
 
-GUI:
+The CLI is best for quick, scriptable runs. You enter artifact prices, client targets, and solo availability via prompts, then specify the player count. Results are printed as text to the console.
+
+### GUI (Graphical User Interface)
+Launch the graphical interface:
 ```
 python -m kortz_heist.gui
 ```
+
+The GUI provides a point-and-click workflow for artifact entry, flagging, and solving. It is ideal for interactive use, visual verification, and managing the client target / solo availability flags.
+
+### Key Difference: CLI vs GUI
+- **CLI**: Text-only prompts in a terminal; no visual artifact management, no inline flag toggling, and output is plain text. Best for automation or when you prefer keyboard-only input.
+- **GUI**: Full visual interface with autocomplete artifact names, price validation, clickable Client Target and Solo OK flags, and a collapsible results panel. Best for interactive heist planning.
+
+### Difficulty Bonuses
+- **Normal difficulty**: $50,000 flat bonus for completing the client's three-piece request.
+- **Hard difficulty**: $100,000 flat bonus for completing the client's three-piece request.
+
+These values are defined in `models.py` `CLIENT_SET_BONUS` and are applied on top of individual artifact values when all three client-target items are secured.
 
 First run (either one): enter a price for each artifact on offer this
 heist (out-of-range prices get flagged inline but are still accepted),
@@ -138,6 +154,14 @@ TOTAL PAYOUT: $737,500
 - Pick the player count and click "Solve" (or press Enter with focus on
   the player-count box) to see the bag assignment in the Plan panel.
 
+### GUI Checkbox Behaviors
+- **Ignore buyer request**: When checked, the solver maximizes profit without requiring the client's three-piece set. The client-set bonus is still available if all three targets are collected incidentally, but it's not required for a valid solution. This is useful when you only care about total value rather than fulfilling the client's specific request.
+- **Skip inaccessible loot (solo)**: When running with 1 player, checking this flag automatically excludes artifacts marked `solo_available=False` from the solving process. Unchecking it (the default) will include those items in the plan but flag them with a "LOCKED" warning so you can decide if they're actually reachable with crew members.
+
+These two flags interact: with solo mode + skip inaccessible enabled + ignore buyer unchecked, you get the strictest validation; with ignore buyer checked, the client-set requirement is waived regardless of solo/squad mode.
+- Pick the player count and click "Solve" (or press Enter with focus on
+  the player-count box) to see the bag assignment in the Plan panel.
+
 ## Packaging the GUI with PyInstaller
 
 From the project root (same folder as `run_gui.py`):
@@ -160,7 +184,7 @@ The executable lands in `dist/`. Notes:
 ## Extending
 
 - **Real catalog**: fill in the rest of the roster in `catalog.py` (name +
-  type only - no price, since that's per-heist).
+  type only - no price, since that's per-heist) - Note: it should be already complete.
 - **A different GUI**: `solver.solve()`, `models`, `catalog`, and
   `session` have no UI dependency - `gui.py` is just one consumer of them.
   Any other frontend can build a `{name: price}` dict, call
