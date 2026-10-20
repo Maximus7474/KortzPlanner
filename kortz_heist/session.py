@@ -16,11 +16,15 @@ from .models import CLIENT_SET_BONUS, Artifact, ArtifactType
 
 APP_NAME = "KortzHeistOptimizer"
 
-# Store user session in LocalAppData on Windows (~/.config on Linux/Mac)
-if sys.platform == "win32":
-    DATA_DIR = Path.home() / "AppData" / "Local" / APP_NAME
+# project is bundled using pyinstaller
+if getattr(sys, 'frozen', False):
+    # Store user session in LocalAppData on Windows (~/.config on Linux/Mac)
+    if sys.platform == "win32":
+        DATA_DIR = Path.home() / "AppData" / "Local" / APP_NAME
+    else:
+        DATA_DIR = Path.home() / ".config" / APP_NAME
 else:
-    DATA_DIR = Path.home() / ".config" / APP_NAME
+    DATA_DIR = Path(__file__).resolve().parent.parent
 
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 DEFAULT_SESSION_PATH = DATA_DIR / "session.json"
