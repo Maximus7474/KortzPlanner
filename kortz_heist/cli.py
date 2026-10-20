@@ -4,8 +4,8 @@ Bare on purpose - swap for a GUI later. The reusable core is
 `solver.solve()` plus `models` / `catalog` / `session` (see README.md).
 """
 from .catalog import CATALOG
-from .models import Artifact, price_warning
-from .session import DEFAULT_SESSION_PATH, Session, build_session, load_session, save_session
+from .models import CLIENT_SET_BONUS, Artifact, price_warning
+from .session import DEFAULT_SESSION_PATH, Difficulty, Session, build_session, load_session, save_session
 from .solver import solve
 
 
@@ -64,7 +64,7 @@ def get_session() -> Session:
     return session
 
 
-def run(num_players: int, artifacts: list[Artifact], client_set_bonus: int) -> None:
+def run(num_players: int, artifacts: list[Artifact], difficulty: Difficulty) -> None:
     if num_players == 1:
         solo_locked = [a for a in artifacts if not a.solo_available]
         if solo_locked:
@@ -75,7 +75,11 @@ def run(num_players: int, artifacts: list[Artifact], client_set_bonus: int) -> N
             print()
 
     try:
-        result = solve(artifacts, num_players, client_set_bonus=client_set_bonus)
+        result = solve(
+            artifacts,
+            num_players,
+            client_set_bonus=CLIENT_SET_BONUS["HARD" if difficulty == "Hard" else "NORMAL"]
+        )
     except (ValueError, RuntimeError, KeyError) as error:
         print('Failed to solve the task')
         print(error)
@@ -108,7 +112,7 @@ def main() -> None:
             break
         print("Enter a number from 1 to 4.")
 
-    run(num_players, session.artifacts, session.client_set_bonus)
+    run(num_players, session.artifacts, session.difficulty)
 
 
 if __name__ == "__main__":
