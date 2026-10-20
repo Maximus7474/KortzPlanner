@@ -13,7 +13,7 @@ from tkinter import messagebox, ttk
 
 from .catalog import CATALOG, CATALOG_BY_NAME
 from .models import Artifact, CLIENT_SET_BONUS, price_warning
-from .session import Session, load_session, save_session
+from .session import Session, DIFFICULTIES, load_session, save_session
 from .solver import solve
 
 CATALOG_NAMES = [name for name, _ in CATALOG]
@@ -270,7 +270,7 @@ class KortzHeistApp(ttk.Frame):
         ttk.Label(cfg_row, text="Difficulty:").pack(side="left")
         self.difficulty_var = tk.StringVar(value="Normal")
         self.difficulty_box = ttk.Combobox(
-            cfg_row, textvariable=self.difficulty_var, values=["Normal", "Hard"],
+            cfg_row, textvariable=self.difficulty_var, values=list(DIFFICULTIES),
             width=10, state="readonly",
         )
         self.difficulty_box.pack(side="left", padx=(4, 16))
@@ -346,13 +346,13 @@ class KortzHeistApp(ttk.Frame):
                 "client_target": a.is_client_target,
                 "solo_available": a.solo_available,
             }
-        self.difficulty_var.set("Normal" if session.client_set_bonus == 50_000 else "Hard")
+        self.difficulty_var.set("Hard" if self.difficulty_var.get() == 'Hard' else "Normal")
         self._refresh_table()
 
     def _save(self):
         save_session(Session(
             artifacts=self._current_artifacts(),
-            client_set_bonus=CLIENT_SET_BONUS["NORMAL" if self.difficulty_var == "Normal" else "HARD"]
+            difficulty="Hard" if self.difficulty_var.get() == 'Hard' else "Normal"
         ))
 
     def _current_artifacts(self):
@@ -626,7 +626,7 @@ class KortzHeistApp(ttk.Frame):
             result = solve(
                 artifacts,
                 num_players,
-                client_set_bonus=CLIENT_SET_BONUS["NORMAL" if self.difficulty_var.get() == "Normal" else "HARD"],
+                client_set_bonus=CLIENT_SET_BONUS["HARD" if self.difficulty_var.get() == "Hard" else "NORMAL"],
                 require_client_set=not skip_buyer,
                 skip_inaccessible=skip_inaccessible,
             )
