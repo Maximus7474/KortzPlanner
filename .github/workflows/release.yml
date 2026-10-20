@@ -42,12 +42,15 @@ jobs:
           - os: windows-latest
             build_path: dist/KortzHeistOptimizer.exe
             asset_name: KortzHeistOptimizer-windows.exe
+            icon_flag: "--icon=.github/kortz-logo.ico"
           - os: macos-latest
             build_path: dist/KortzHeistOptimizer
             asset_name: KortzHeistOptimizer-macos
+            icon_flag: "--icon=.github/kortz-logo.icns"
           - os: ubuntu-latest
             build_path: dist/KortzHeistOptimizer
             asset_name: KortzHeistOptimizer-linux
+            icon_flag: ""
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -66,7 +69,7 @@ jobs:
       - run: pip install pyinstaller
 
       - name: Build executable
-        run: pyinstaller --onefile --windowed --name KortzHeistOptimizer run_gui.py
+        run: pyinstaller --onefile --windowed ${{ matrix.icon_flag }} --name KortzHeistOptimizer run_gui.py
 
       - name: Rename artifact
         shell: bash
