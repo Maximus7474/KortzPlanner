@@ -8,7 +8,7 @@ re-entering everything.
 """
 import json, sys
 from pathlib import Path
-from typing import NamedTuple
+from typing import Literal, NamedTuple, get_args
 from collections.abc import Iterable
 
 from .catalog import CATALOG_BY_NAME
@@ -30,16 +30,20 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 DEFAULT_SESSION_PATH = DATA_DIR / "session.json"
 
 
+Difficulty = Literal["Hard", "Normal"]
+DIFFICULTIES: list[Difficulty] = list(get_args(Difficulty))
+
+
 class Session(NamedTuple):
     artifacts: list[Artifact]
-    client_set_bonus: int
+    difficulty: Difficulty
 
 
 def build_session(
     prices: dict[str, int],
     client_targets: Iterable[str] = (),
     solo_unavailable: Iterable[str] = (),
-    client_set_bonus: int = CLIENT_SET_BONUS["NORMAL"],
+    difficulty: Difficulty = "Normal",
 ) -> Session:
     """Build this heist's artifact layout from the static catalog plus this
     heist's variable data.
@@ -48,8 +52,8 @@ def build_session(
         leave an artifact out if it isn't on offer this heist.
     client_targets: names of the (up to three) client-request items.
     solo_unavailable: names known to be unobtainable solo this heist.
-    client_set_bonus: payout for completing the client's three-piece
-        request. Fixed at CLIENT_SET_BONUS unless overridden.
+    difficulty: difficulty of the heist which defines the payout for
+        completing the client's three-piece request.
     """
     client_targets = set(client_targets)
     solo_unavailable = set(solo_unavailable)
@@ -68,14 +72,14 @@ def build_session(
         )
         for name, price in prices.items()
     ]
-    return Session(artifacts=artifacts, client_set_bonus=client_set_bonus)
+    return Session(artifacts=artifacts, difficulty=difficulty)
 
 
 def save_session(session: Session, path: Path = DEFAULT_SESSION_PATH) -> None:
     """Persist this heist's artifact layout + bonus so it can be reloaded
     later (e.g. to rerun the solver with a different player count)."""
     payload = {
-        "client_set_bonus": session.client_set_bonus,
+        "difficulty": session.difficulty,
         "artifacts": [
             {
                 "name": a.name,
@@ -108,4 +112,13 @@ def load_session(path: Path = DEFAULT_SESSION_PATH) -> Session | None:
         )
         for item in raw["artifacts"]
     ]
-    return Session(artifacts=artifacts, client_set_bonus=raw["client_set_bonus"])
+
+    # Mitigates the breaking change by taking into account the prior
+    # payload format of the session data
+    difficulty: Difficulty = DIFFICULTIES[0]
+    if "difficulty" in raw:
+        difficulty = raw["difficulty"]
+    elif "client_set_bonus" in raw:
+        difficulty = "Hard" if raw["client_set_bonus"] == 100_000 else "Normal"
+
+    return Session(artifacts=artifacts, difficulty=difficulty)
