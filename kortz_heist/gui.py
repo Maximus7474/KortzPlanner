@@ -267,6 +267,15 @@ class KortzHeistApp(ttk.Frame):
         self.players_box.bind("<<ComboboxSelected>>", self._update_solo_options)
         self.players_box.bind("<Return>", lambda e: self._on_solve())
 
+        ttk.Label(cfg_row, text="Difficulty:").pack(side="left")
+        self.difficulty_var = tk.StringVar(value="Normal")
+        self.difficulty_box = ttk.Combobox(
+            cfg_row, textvariable=self.difficulty_var, values=["Normal", "Hard"],
+            width=10, state="readonly",
+        )
+        self.difficulty_box.pack(side="left", padx=(4, 16))
+        self.difficulty_box.bind("<Return>", lambda e: self._on_solve())
+
         self.skip_buyer_var = tk.BooleanVar(value=False)
         self.skip_buyer_check = ttk.Checkbutton(
             cfg_row, text="Ignore buyer request", variable=self.skip_buyer_var
@@ -337,10 +346,14 @@ class KortzHeistApp(ttk.Frame):
                 "client_target": a.is_client_target,
                 "solo_available": a.solo_available,
             }
+        self.difficulty_var.set("Normal" if session.client_set_bonus == 50_000 else "Hard")
         self._refresh_table()
 
     def _save(self):
-        save_session(Session(artifacts=self._current_artifacts(), client_set_bonus=CLIENT_SET_BONUS))
+        save_session(Session(
+            artifacts=self._current_artifacts(),
+            client_set_bonus=CLIENT_SET_BONUS["NORMAL" if self.difficulty_var == "Normal" else "HARD"]
+        ))
 
     def _current_artifacts(self):
         return [
@@ -613,7 +626,7 @@ class KortzHeistApp(ttk.Frame):
             result = solve(
                 artifacts,
                 num_players,
-                client_set_bonus=CLIENT_SET_BONUS,
+                client_set_bonus=CLIENT_SET_BONUS["NORMAL" if self.difficulty_var.get() == "Normal" else "HARD"],
                 require_client_set=not skip_buyer,
                 skip_inaccessible=skip_inaccessible,
             )
