@@ -2,9 +2,15 @@
 import math
 from dataclasses import dataclass
 from functools import lru_cache
-from .models import Artifact, BAG_CAPACITY_UNITS
+
+from kortz_heist.session import DIFFICULTIES, Difficulty
+from .models import CLIENT_SET_BONUS, Artifact, BAG_CAPACITY_UNITS
 
 _INFEASIBLE = -math.inf
+
+
+class SolverError(Exception):
+    """Base exception for all optimizer/solver failures."""
 
 
 @dataclass
@@ -13,6 +19,7 @@ class SolveResult:
     left_behind: list[Artifact]
     total_value: int
     client_set_completed: bool
+    client_set_bonus: int
     bonus_applied: int
 
 
@@ -20,7 +27,7 @@ def solve(
     artifacts: list[Artifact],
     num_players: int,
     bag_capacity_units: int = BAG_CAPACITY_UNITS,
-    client_set_bonus: int = 0,
+    difficulty: str | Difficulty = DIFFICULTIES[0],
     require_client_set: bool = True,
     skip_inaccessible: bool = False,
 ) -> SolveResult:
@@ -34,6 +41,11 @@ def solve(
     """
     if not 1 <= num_players <= 4:
         raise ValueError("num_players must be between 1 and 4")
+
+    try:
+        client_set_bonus = CLIENT_SET_BONUS[difficulty.upper()]
+    except KeyError:
+        raise SolverError(f"Invalid difficulty mode: '{difficulty}'")
 
     # Filter out inaccessible items for solo runs if requested
     items = [
@@ -128,6 +140,7 @@ def solve(
         assignment=assignment,
         left_behind=left_behind,
         total_value=round(total_value),
+        client_set_bonus=client_set_bonus,
         client_set_completed=client_set_completed,
         bonus_applied=bonus_applied,
     )

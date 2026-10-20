@@ -78,7 +78,7 @@ def run(num_players: int, artifacts: list[Artifact], difficulty: Difficulty) -> 
         result = solve(
             artifacts,
             num_players,
-            client_set_bonus=CLIENT_SET_BONUS["HARD" if difficulty == "Hard" else "NORMAL"]
+            difficulty=difficulty,
         )
     except (ValueError, RuntimeError, KeyError) as error:
         print('Failed to solve the task')

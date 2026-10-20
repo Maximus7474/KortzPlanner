@@ -626,7 +626,7 @@ class KortzHeistApp(ttk.Frame):
             result = solve(
                 artifacts,
                 num_players,
-                client_set_bonus=CLIENT_SET_BONUS["HARD" if self.difficulty_var.get() == "Hard" else "NORMAL"],
+                difficulty=self.difficulty_var.get(),
                 require_client_set=not skip_buyer,
                 skip_inaccessible=skip_inaccessible,
             )
