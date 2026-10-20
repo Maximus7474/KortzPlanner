@@ -30,7 +30,9 @@ CATALOG = [
     ("Memento Non Mori (Diamond)", ArtifactType.VERTICAL_CASE),
     ("Coquard Carcanet (Yellow Diamond)", ArtifactType.VERTICAL_CASE),
     ("Coquard Carcanet (Red Spinel)", ArtifactType.VERTICAL_CASE),
+    ("Coquard Carcanet (Emeralds)", ArtifactType.VERTICAL_CASE), # 82.5
     ("Venus d'Algernon (Marble)", ArtifactType.VERTICAL_CASE),
+    ("Venus d'Algernon (Silver)", ArtifactType.VERTICAL_CASE), # 107.5k
     ("Ruby Gemstone", ArtifactType.VERTICAL_CASE),
     ("Yellow Topaz", ArtifactType.VERTICAL_CASE),
     ("Silver Dapple Pinto", ArtifactType.VERTICAL_CASE),
@@ -38,6 +40,7 @@ CATALOG = [
 
     ("Meteorite Fragment", ArtifactType.HORIZONTAL_CASE_CUSHION),
     ("Fertility Statue (Ivory)", ArtifactType.HORIZONTAL_CASE_CUSHION),
+    ("Fertility Statue (Bronze)", ArtifactType.HORIZONTAL_CASE_CUSHION), # 60
     ("Fertility Statue (Gold)", ArtifactType.HORIZONTAL_CASE_CUSHION),
     ("Oeuf de Coquard Verdoyant", ArtifactType.HORIZONTAL_CASE_CUSHION),
     ("Oeuf de Coquard de Vouivre", ArtifactType.HORIZONTAL_CASE_CUSHION),
