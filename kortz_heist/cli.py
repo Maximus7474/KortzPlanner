@@ -5,7 +5,7 @@ Bare on purpose - swap for a GUI later. The reusable core is
 """
 from .catalog import CATALOG
 from .models import CLIENT_SET_BONUS, Artifact, price_warning
-from .session import DEFAULT_SESSION_PATH, Difficulty, Session, build_session, load_session, save_session
+from .session import DEFAULT_SESSION_PATH, DIFFICULTIES, Difficulty, Session, build_session, load_session, save_session
 from .solver import solve
 
 
@@ -46,7 +46,20 @@ def prompt_new_session() -> Session:
     raw = input("  Solo-unavailable: ").strip()
     solo_unavailable = [n.strip() for n in raw.split(",") if n.strip()] if raw else []
 
-    return build_session(prices, client_targets, solo_unavailable)
+    print("\n What difficulty are you running")
+    raw = input(f"  Difficulty ({", ".join(DIFFICULTIES)}): ").strip()
+
+    kwargs = {
+        "prices": prices,
+        "client_targets": client_targets,
+        "solo_unavailable": solo_unavailable,
+    }
+
+    # Only pass difficulty if the user typed a valid option
+    if raw.capitalize() in DIFFICULTIES:
+        kwargs["difficulty"] = raw.capitalize()
+
+    return build_session(**kwargs)
 
 
 def get_session() -> Session:
