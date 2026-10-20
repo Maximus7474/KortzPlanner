@@ -6,7 +6,7 @@ Also handles saving/loading a session to disk, so a plan can be
 reprocessed - e.g. rerun with a different player count - without
 re-entering everything.
 """
-import json
+import json, sys
 from pathlib import Path
 from typing import NamedTuple
 from collections.abc import Iterable
@@ -14,7 +14,16 @@ from collections.abc import Iterable
 from .catalog import CATALOG_BY_NAME
 from .models import CLIENT_SET_BONUS, Artifact, ArtifactType
 
-DEFAULT_SESSION_PATH = Path(__file__).resolve().parent.parent / "session.json"
+APP_NAME = "KortzHeistOptimizer"
+
+# Store user session in LocalAppData on Windows (~/.config on Linux/Mac)
+if sys.platform == "win32":
+    DATA_DIR = Path.home() / "AppData" / "Local" / APP_NAME
+else:
+    DATA_DIR = Path.home() / ".config" / APP_NAME
+
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+DEFAULT_SESSION_PATH = DATA_DIR / "session.json"
 
 
 class Session(NamedTuple):
@@ -74,6 +83,9 @@ def save_session(session: Session, path: Path = DEFAULT_SESSION_PATH) -> None:
             for a in session.artifacts
         ],
     }
+
+    print(f'Saving session with {len(session.artifacts)} artifacts to', path)
+
     path.write_text(json.dumps(payload, indent=2))
 
 
