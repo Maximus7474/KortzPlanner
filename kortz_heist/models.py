@@ -45,7 +45,10 @@ def price_warning(art_type: ArtifactType, price: int) -> str | None:
 SPACE_UNIT_PERCENT = 10
 BAG_CAPACITY_UNITS = 100 // SPACE_UNIT_PERCENT  # 10 units per bag
 
-CLIENT_SET_BONUS = 100_000
+CLIENT_SET_BONUS = {
+    "NORMAL": 50_000,
+    "HARD": 100_000,
+}
 
 
 @dataclass(frozen=True)

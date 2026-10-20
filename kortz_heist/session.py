@@ -39,7 +39,7 @@ def build_session(
     prices: dict[str, int],
     client_targets: Iterable[str] = (),
     solo_unavailable: Iterable[str] = (),
-    client_set_bonus: int = CLIENT_SET_BONUS,
+    client_set_bonus: int = CLIENT_SET_BONUS["NORMAL"],
 ) -> Session:
     """Build this heist's artifact layout from the static catalog plus this
     heist's variable data.
