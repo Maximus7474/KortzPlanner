@@ -8,12 +8,14 @@ Layout:
 - Bottom: player count + options + action buttons.
 - Results panel: the resulting bag assignment, same info the CLI prints.
 """
+import threading
 import tkinter as tk
 from tkinter import messagebox, ttk
 
 from .catalog import CATALOG, CATALOG_BY_NAME
 from .models import Artifact, CLIENT_SET_BONUS, price_warning
 from .session import Session, DIFFICULTIES, load_session, save_session
+from .updater import check_for_updates
 from .solver import solve
 
 CATALOG_NAMES = [name for name, _ in CATALOG]
@@ -172,7 +174,6 @@ class KortzHeistApp(ttk.Frame):
     def __init__(self, master):
         super().__init__(master, padding=10)
         self.master = master
-        master.title("Kortz Center Heist Optimizer")
 
         # name -> {"type": ArtifactType, "price": int,
         #          "client_target": bool, "solo_available": bool}
@@ -663,6 +664,14 @@ class KortzHeistApp(ttk.Frame):
 
 def main():
     root = tk.Tk()
+    root.title("Kortz Center Heist Optimizer")
+
+    threading.Thread(
+        target=check_for_updates,
+        args=(root,),
+        daemon=True
+    ).start()
+
     KortzHeistApp(root)
     root.mainloop()
 
