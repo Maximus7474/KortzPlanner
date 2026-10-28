@@ -7,7 +7,8 @@ from .catalog import CATALOG
 from .models import CLIENT_SET_BONUS, Artifact, price_warning
 from .session import DEFAULT_SESSION_PATH, DIFFICULTIES, Difficulty, Session, build_session, load_session, save_session
 from .solver import solve
-
+from .updater import check_for_updates
+from .version import __version__
 
 def warn_price_outliers(artifacts: list[Artifact]) -> None:
     """Print a flag for any artifact whose price falls outside the
@@ -116,6 +117,7 @@ def run(num_players: int, artifacts: list[Artifact], difficulty: Difficulty) -> 
 
 
 def main() -> None:
+    check_for_updates()
     session = get_session()
 
     while True:
