@@ -61,12 +61,18 @@ jobs:
         with:
           python-version: "3.12"
 
+      # inject the resolved Git tag into version.py before building
+      - name: Inject version tag
+        shell: bash
+        run: |
+          echo "__version__ = \"${{ needs.prepare.outputs.tag }}\"" > kortz_heist/version.py
+
       # actions/setup-python's Python doesn't bundle Tk on Linux runners.
       - name: Install Tk (Linux only)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y python3-tk
 
-      - run: pip install pyinstaller
+      - run: pip install pyinstaller packaging
 
       - name: Build executable
         run: pyinstaller --onefile --windowed ${{ matrix.icon_flag }} --name KortzHeistOptimizer run_gui.py
