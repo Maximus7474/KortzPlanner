@@ -65,6 +65,9 @@ CATALOG = [
     ("Art Deco Circlets", ArtifactType.HORIZONTAL_CASE),
     ("Antique Rings", ArtifactType.HORIZONTAL_CASE),
     ("Byzantine Hoops", ArtifactType.HORIZONTAL_CASE),
+
+    # Loading Bay
+    ('Cash case', ArtifactType.CASH_CASE),
 ]
 
 CATALOG_BY_NAME = {name: art_type for name, art_type in CATALOG}

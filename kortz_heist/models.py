@@ -8,6 +8,7 @@ class ArtifactType(Enum):
     VERTICAL_CASE = "vertical_case"
     HORIZONTAL_CASE_CUSHION = "horizontal_case_cushion"
     HORIZONTAL_CASE = "horizontal_case"
+    CASH_CASE = "cash_case"
 
 
 # Space each artifact type takes up, as a percentage of a single bag.
@@ -16,6 +17,7 @@ SPACE_COST_PERCENT = {
     ArtifactType.VERTICAL_CASE: 30,
     ArtifactType.HORIZONTAL_CASE_CUSHION: 20,
     ArtifactType.HORIZONTAL_CASE: 10,
+    ArtifactType.CASH_CASE: 30,
 }
 
 # Typical (min, max) price for each type, used only to flag outliers when
@@ -26,6 +28,7 @@ TYPICAL_PRICE_RANGE = {
     ArtifactType.VERTICAL_CASE: (70_000, 130_000),
     ArtifactType.HORIZONTAL_CASE_CUSHION: (30_000, 100_000),
     ArtifactType.HORIZONTAL_CASE: (20_000, 50_000),
+    ArtifactType.CASH_CASE: (120_000, 150_000),
 }
 
 
