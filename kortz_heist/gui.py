@@ -12,13 +12,11 @@ import threading
 import tkinter as tk
 from tkinter import messagebox, ttk
 
-from .catalog import CATALOG, CATALOG_BY_NAME
+from .catalog import CATALOG, CATALOG_BY_NAME, CATALOG_NAMES
 from .models import Artifact, CLIENT_SET_BONUS, price_warning
 from .session import Session, DIFFICULTIES, load_session, save_session
 from .updater import check_for_updates
 from .solver import solve
-
-CATALOG_NAMES = [name for name, _ in CATALOG]
 
 
 class AutocompleteEntry(ttk.Entry):
