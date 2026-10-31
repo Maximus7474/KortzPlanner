@@ -12,8 +12,8 @@ import threading
 import tkinter as tk
 from tkinter import messagebox, ttk
 
-from .catalog import CATALOG, CATALOG_BY_NAME, CATALOG_NAMES
-from .models import Artifact, CLIENT_SET_BONUS, price_warning
+from .catalog import CATALOG_BY_NAME, CATALOG_NAMES
+from .models import Artifact, ArtifactLocations, price_warning
 from .session import Session, DIFFICULTIES, load_session, save_session
 from .updater import check_for_updates
 from .solver import solve
@@ -412,14 +412,14 @@ class KortzHeistApp(ttk.Frame):
             self.price_entry.focus_set()
             return
 
-        art_type = CATALOG_BY_NAME[match]
-        warning = price_warning(art_type, price)
+        artifact = CATALOG_BY_NAME[match]
+        warning = price_warning(artifact.type, price)
 
         self.items[match] = {
-            "type": art_type,
+            "type": artifact.type,
             "price": price,
             "client_target": False,
-            "solo_available": True,
+            "solo_available": artifact.location != ArtifactLocations.CRISPGALLERY,
         }
         self._refresh_table()
         self._save()
@@ -497,10 +497,6 @@ class KortzHeistApp(ttk.Frame):
             return
         if col == "#4":
             self._toggle_client_target(row)
-        elif col == "#5":
-            self.items[row]["solo_available"] = not self.items[row]["solo_available"]
-            self._refresh_table()
-            self._save()
 
     def _toggle_client_target(self, name):
         data = self.items[name]
@@ -546,8 +542,9 @@ class KortzHeistApp(ttk.Frame):
         ttk.Checkbutton(dialog, text="Client target", variable=client_var).grid(
             row=2, column=0, columnspan=2, padx=8, sticky="w"
         )
-        solo_var = tk.BooleanVar(value=data["solo_available"])
-        ttk.Checkbutton(dialog, text="Solo obtainable", variable=solo_var).grid(
+
+        solo_text = f"{"\u2611" if data["solo_available"] else "\u2610"} Solo obtainable"
+        ttk.Label(dialog, text=solo_text).grid(
             row=3, column=0, columnspan=2, padx=8, sticky="w"
         )
 
@@ -569,7 +566,6 @@ class KortzHeistApp(ttk.Frame):
                     return
             data["price"] = new_price
             data["client_target"] = client_var.get()
-            data["solo_available"] = solo_var.get()
             self._refresh_table()
             self._save()
             dialog.destroy()
