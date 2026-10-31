@@ -5,7 +5,14 @@ with which items happen to be on offer, which is the client's three-piece
 request, and which are solo-obtainable. That variable, per-heist data lives
 in session.py, not here.
 """
-from .models import ArtifactType
+from dataclasses import dataclass
+
+from .models import ArtifactLocations, ArtifactType
+
+@dataclass(frozen=True)
+class CatalogArtifact:
+    type: ArtifactType
+    location: str | None
 
 # (name, type, location)
 CATALOG = [
@@ -72,5 +79,11 @@ CATALOG = [
     ('Cash case', ArtifactType.CASH_CASE, None),
 ]
 
-CATALOG_BY_NAME = {name: art_type for name, art_type, location in CATALOG}
+CATALOG_BY_NAME: dict[str, CatalogArtifact] = {
+    name: CatalogArtifact(
+        type=art_type,
+        location=location
+    )
+    for name, art_type, location in CATALOG
+}
 CATALOG_NAMES = [name for name, art_type, location in CATALOG]
