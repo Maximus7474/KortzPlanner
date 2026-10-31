@@ -11,6 +11,15 @@ class ArtifactType(Enum):
     CASH_CASE = "cash_case"
 
 
+class ArtifactLocations(Enum):
+    VAULT = "vault"
+    LOWERFLOOR = "lower_floor"
+    MAINFLOOR = "main_floor"
+    UPPERFLOOR = "upper_floor"
+    CRISPGALLERY = "crisp_gallery"
+    LOADINGBAY = "loading_bay"
+
+
 # Space each artifact type takes up, as a percentage of a single bag.
 SPACE_COST_PERCENT = {
     ArtifactType.ARTWORK: 50,
