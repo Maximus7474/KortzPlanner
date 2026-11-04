@@ -911,9 +911,9 @@ class KortzHeistApp(ttk.Frame):
             tree.heading("#0", text="Artifact")
             tree.heading("space", text="Space")
             tree.heading("value", text="Value")
-            tree.column("#0", width=280, anchor="w")
-            tree.column("space", width=110, anchor="center")
-            tree.column("value", width=110, anchor="e")
+            tree.column("#0", width=180, minwidth=120, anchor="w", stretch=True)
+            tree.column("space", width=80, minwidth=60, anchor="center", stretch=False)
+            tree.column("value", width=90, minwidth=70, anchor="e", stretch=False)
             tree.pack(fill="x", expand=True, pady=(0, 6))
 
             if payout.artifacts:
