@@ -684,7 +684,7 @@ class KortzHeistApp(ttk.Frame):
                     d["type"].value,
                     f"${d['price']:,}",
                     "\u2611" if d["client_target"] else "\u2610",
-                    "\u2611" if d["solo_available"] else "\u2610",
+                    "\u2611" if d["solo_available"] else "",
                 ),
                 tags=tags,
             )
