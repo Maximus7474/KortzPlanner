@@ -12,7 +12,7 @@ from typing import Literal, NamedTuple, get_args
 from collections.abc import Iterable
 
 from .catalog import CATALOG_BY_NAME
-from .models import CLIENT_SET_BONUS, Artifact, ArtifactType
+from .models import Artifact, ArtifactType
 
 APP_NAME = "KortzHeistOptimizer"
 
@@ -37,6 +37,7 @@ DIFFICULTIES: list[Difficulty] = list(get_args(Difficulty))
 class Session(NamedTuple):
     artifacts: list[Artifact]
     difficulty: Difficulty
+    primary_target_value: int = 0
 
 
 def build_session(
@@ -44,6 +45,7 @@ def build_session(
     client_targets: Iterable[str] = (),
     solo_unavailable: Iterable[str] = (),
     difficulty: Difficulty = "Normal",
+    primary_target_value: int = 0,
 ) -> Session:
     """Build this heist's artifact layout from the static catalog plus this
     heist's variable data.
@@ -54,7 +56,12 @@ def build_session(
     solo_unavailable: names known to be unobtainable solo this heist.
     difficulty: difficulty of the heist which defines the payout for
         completing the client's three-piece request.
+    primary_target_value: value of the primary target, paid in full to the
+        planner / owner and excluded from the secondary-loot split.
     """
+    if primary_target_value < 0:
+        raise ValueError("primary_target_value can't be negative")
+
     client_targets = set(client_targets)
     solo_unavailable = set(solo_unavailable)
 
@@ -72,14 +79,19 @@ def build_session(
         )
         for name, price in prices.items()
     ]
-    return Session(artifacts=artifacts, difficulty=difficulty)
+    return Session(
+        artifacts=artifacts,
+        difficulty=difficulty,
+        primary_target_value=primary_target_value,
+    )
 
 
 def save_session(session: Session, path: Path = DEFAULT_SESSION_PATH) -> None:
-    """Persist this heist's artifact layout + bonus so it can be reloaded
-    later (e.g. to rerun the solver with a different player count)."""
+    """Persist this heist's artifact layout + payout settings so it can be
+    reloaded later (e.g. to rerun the solver with a different player count)."""
     payload = {
         "difficulty": session.difficulty,
+        "primary_target_value": session.primary_target_value,
         "artifacts": [
             {
                 "name": a.name,
@@ -121,4 +133,11 @@ def load_session(path: Path = DEFAULT_SESSION_PATH) -> Session | None:
     elif "client_set_bonus" in raw:
         difficulty = "Hard" if raw["client_set_bonus"] == 100_000 else "Normal"
 
-    return Session(artifacts=artifacts, difficulty=difficulty)
+    # Older session files predate the primary target value.
+    primary_target_value = int(raw.get("primary_target_value") or 0)
+
+    return Session(
+        artifacts=artifacts,
+        difficulty=difficulty,
+        primary_target_value=primary_target_value,
+    )
