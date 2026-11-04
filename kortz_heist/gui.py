@@ -1,12 +1,11 @@
 """Tkinter GUI for the Kortz Center heist optimizer.
 
 Layout:
-- "Add artifact" row: type a name (autocomplete against the static
-  catalog), Tab/Enter to the price field, Enter to add it to the table.
-- Table: one row per added artifact. Click column headers to sort.
-  Click the "Client Target" or "Solo OK" cell to toggle it.
-- Bottom: player count + options + action buttons.
-- Results panel: the resulting bag assignment, same info the CLI prints.
+- Setup page: "Add artifact" row (autocomplete name + price), the artifact
+  table (newest addition first by default), then the configuration options
+  (players, difficulty, primary target value, and the two flags).
+- Plan page: shown once a plan is established; hides the setup page and
+  lists each player's bag plus their estimated payout.
 """
 import threading
 import tkinter as tk
@@ -14,6 +13,7 @@ from tkinter import messagebox, ttk
 
 from .catalog import CATALOG_BY_NAME, CATALOG_NAMES
 from .models import Artifact, ArtifactLocations, price_warning
+from .payout import PayoutEstimate, estimate_payouts
 from .session import Session, DIFFICULTIES, load_session, save_session
 from .updater import check_for_updates
 from .solver import solve
@@ -177,27 +177,36 @@ class KortzHeistApp(ttk.Frame):
         #          "client_target": bool, "solo_available": bool}
         self.items = {}
 
+        self.primary_value = 0
+
         # Sorting state
         self._sort_column = None
         self._sort_reverse = False
 
+        self._last_estimate: PayoutEstimate | None = None
+        self._summary_text = ""
+
         self.pack(fill="both", expand=True)
         self._build_menu()
-        self._build_widgets()
+        self._build_setup_page()
+        self._build_results_page()
+        self._show_setup()
         self._maybe_offer_saved_session()
 
     def _build_menu(self):
         menubar = tk.Menu(self.master)
         file_menu = tk.Menu(menubar, tearoff=0)
-        file_menu.add_command(label="New session", command=self._on_clear_all)
+        file_menu.add_command(label="New session", command=self._on_new_session)
         file_menu.add_command(label="Reload saved session", command=self._reload_from_disk)
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.master.quit)
         menubar.add_cascade(label="File", menu=file_menu)
         self.master.config(menu=menubar)
 
-    def _build_widgets(self):
-        add_frame = ttk.LabelFrame(self, text="Add artifact", padding=8)
+    def _build_setup_page(self):
+        self.setup_page = ttk.Frame(self)
+
+        add_frame = ttk.LabelFrame(self.setup_page, text="Add artifact", padding=8)
         add_frame.pack(fill="x", pady=(0, 8))
 
         ttk.Label(add_frame, text="Name:").grid(row=0, column=0, sticky="w")
@@ -221,7 +230,7 @@ class KortzHeistApp(ttk.Frame):
             row=1, column=0, columnspan=5, sticky="w", pady=(4, 0)
         )
 
-        table_frame = ttk.Frame(self)
+        table_frame = ttk.Frame(self.setup_page)
         table_frame.pack(fill="both", expand=True, pady=(0, 8))
 
         columns = ("name", "type", "price", "client", "solo")
@@ -249,7 +258,7 @@ class KortzHeistApp(ttk.Frame):
         self.tree.bind("<Double-1>", self._on_tree_double_click)
 
         # controls / options section
-        controls_frame = ttk.LabelFrame(self, text="Configuration & Controls", padding=8)
+        controls_frame = ttk.LabelFrame(self.setup_page, text="Configuration & Controls", padding=8)
         controls_frame.pack(fill="x", pady=(0, 8))
 
         # config row: players & toggles
@@ -275,35 +284,158 @@ class KortzHeistApp(ttk.Frame):
         self.difficulty_box.pack(side="left", padx=(4, 16))
         self.difficulty_box.bind("<Return>", lambda e: self._on_solve())
 
+        # primary target value
+        primary_row = ttk.Frame(controls_frame)
+        primary_row.pack(fill="x", pady=(0, 6))
+
+        ttk.Label(primary_row, text="Primary target value: $").pack(side="left")
+        self.primary_var = tk.StringVar()
+        self.primary_entry = ttk.Entry(primary_row, textvariable=self.primary_var, width=14)
+        self.primary_entry.pack(side="left", padx=(4, 8))
+        self.primary_entry.bind("<Return>", self._on_primary_enter)
+        self.primary_entry.bind("<FocusOut>", self._commit_primary)
+
+        # flags
+        flags_row = ttk.Frame(controls_frame)
+        flags_row.pack(fill="x", pady=(0, 6))
+
         self.skip_buyer_var = tk.BooleanVar(value=False)
         self.skip_buyer_check = ttk.Checkbutton(
-            cfg_row, text="Ignore buyer request", variable=self.skip_buyer_var
+            flags_row, text="Ignore buyer request", variable=self.skip_buyer_var
         )
         self.skip_buyer_check.pack(side="left", padx=(0, 16))
 
         self.skip_inaccessible_var = tk.BooleanVar(value=False)
         self.skip_inaccessible_check = ttk.Checkbutton(
-            cfg_row, text="Skip inaccessible loot (solo)", variable=self.skip_inaccessible_var
+            flags_row, text="Skip inaccessible loot (solo)", variable=self.skip_inaccessible_var
         )
         self.skip_inaccessible_check.pack(side="left")
+
+        self.plan_error_var = tk.StringVar()
+        ttk.Label(
+            controls_frame,
+            textvariable=self.plan_error_var,
+            foreground="#b00020",
+            wraplength=720,
+            justify="left",
+        ).pack(fill="x", pady=(0, 4))
 
         # action button row
         btn_row = ttk.Frame(controls_frame)
         btn_row.pack(fill="x")
 
-        self.solve_btn = ttk.Button(btn_row, text="Solve Plan (Enter)", command=self._on_solve)
+        self.solve_btn = ttk.Button(btn_row, text="Establish plan (Enter)", command=self._on_solve)
         self.solve_btn.pack(side="left", padx=(0, 12))
 
         self.clear_btn = ttk.Button(btn_row, text="Clear All", command=self._on_clear_all)
         self.clear_btn.pack(side="left")
 
-        results_frame = ttk.LabelFrame(self, text="Optimized Plan Output", padding=8)
-        results_frame.pack(fill="both", expand=True)
-        self.results_text = tk.Text(results_frame, height=12, wrap="word", state="disabled")
-        self.results_text.pack(fill="both", expand=True)
-
         self._update_solo_options()
+
+    def _build_results_page(self):
+        self.results_page = ttk.Frame(self)
+
+        header = ttk.Frame(self.results_page)
+        header.pack(fill="x", pady=(0, 6))
+
+        ttk.Label(
+            header, text="Plan established", font=("Segoe UI", 13, "bold")
+        ).pack(anchor="w")
+
+        self.results_summary_var = tk.StringVar()
+        ttk.Label(
+            header,
+            textvariable=self.results_summary_var,
+            justify="left",
+            wraplength=920,
+        ).pack(anchor="w", pady=(2, 2))
+
+        self.results_notes_var = tk.StringVar()
+        ttk.Label(
+            header,
+            textvariable=self.results_notes_var,
+            foreground="#a05a00",
+            justify="left",
+            wraplength=920,
+        ).pack(anchor="w")
+
+        scroll_container = ttk.Frame(self.results_page)
+        scroll_container.pack(fill="both", expand=True, pady=(0, 6))
+
+        self._results_canvas = tk.Canvas(scroll_container, highlightthickness=0)
+        results_scrollbar = ttk.Scrollbar(
+            scroll_container, orient="vertical", command=self._results_canvas.yview
+        )
+        self._results_canvas.configure(yscrollcommand=results_scrollbar.set)
+        results_scrollbar.pack(side="right", fill="y")
+        self._results_canvas.pack(side="left", fill="both", expand=True)
+
+        self.cards_frame = ttk.Frame(self._results_canvas)
+        self._cards_window = self._results_canvas.create_window(
+            (0, 0), window=self.cards_frame, anchor="nw"
+        )
+        self.cards_frame.bind("<Configure>", self._on_cards_configure)
+        self._results_canvas.bind("<Configure>", self._on_canvas_configure)
+        for sequence in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
+            self._results_canvas.bind(sequence, self._on_results_wheel)
+
+        footer = ttk.Frame(self.results_page)
+        footer.pack(fill="x")
+
+        ttk.Button(footer, text="Back to setup", command=self._show_setup).pack(
+            side="left", padx=(0, 8)
+        )
+        ttk.Button(footer, text="Copy summary", command=self._copy_summary).pack(side="left")
+
+        self.copy_status_var = tk.StringVar()
+        ttk.Label(
+            footer, textvariable=self.copy_status_var, foreground="#2a7f2a"
+        ).pack(side="left", padx=8)
+
+    def _on_cards_configure(self, event=None):
+        self._results_canvas.configure(scrollregion=self._results_canvas.bbox("all"))
+
+    def _on_canvas_configure(self, event):
+        self._results_canvas.itemconfigure(self._cards_window, width=event.width)
+
+    def _on_results_wheel(self, event):
+        if getattr(event, "num", None) == 4:
+            delta = -1
+        elif getattr(event, "num", None) == 5:
+            delta = 1
+        else:
+            delta = -1 if event.delta > 0 else 1
+        self._results_canvas.yview_scroll(delta, "units")
+        return "break"
+
+    def _bind_results_wheel(self, widget):
+        for sequence in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
+            widget.bind(sequence, self._on_results_wheel, add="+")
+        for child in widget.winfo_children():
+            self._bind_results_wheel(child)
+
+    def _show_setup(self):
+        self.results_page.pack_forget()
+        self.setup_page.pack(fill="both", expand=True)
         self.name_box.focus_set()
+
+    def _show_results(self):
+        self.setup_page.pack_forget()
+        self.results_page.pack(fill="both", expand=True)
+        self._results_canvas.yview_moveto(0)
+
+    def _on_new_session(self):
+        if self.items and not messagebox.askyesno(
+            "New session", "Remove every item and start over?"
+        ):
+            return
+        self.items.clear()
+        self.primary_value = 0
+        self.primary_var.set("")
+        self._reset_sort()
+        self._refresh_table()
+        self._save()
+        self._show_setup()
 
     def _update_solo_options(self, event=None):
         """Enable/disable solo options based on the player count."""
@@ -320,6 +452,8 @@ class KortzHeistApp(ttk.Frame):
         if not existing:
             return
         message = f"Found a saved layout with {len(existing.artifacts)} artifact(s)."
+        if existing.primary_target_value:
+            message += f"\nPrimary target: ${existing.primary_target_value:,}"
         outliers = [a for a in existing.artifacts if price_warning(a.type, a.value)]
         if outliers:
             message += "\n\nFlagged prices:\n" + "\n".join(
@@ -335,6 +469,7 @@ class KortzHeistApp(ttk.Frame):
             messagebox.showinfo("No saved session", "There's no saved session to reload.")
             return
         self._load_into_items(existing)
+        self._show_setup()
 
     def _load_into_items(self, session: Session):
         self.items.clear()
@@ -345,13 +480,23 @@ class KortzHeistApp(ttk.Frame):
                 "client_target": a.is_client_target,
                 "solo_available": a.solo_available,
             }
-        self.difficulty_var.set("Hard" if self.difficulty_var.get() == 'Hard' else "Normal")
+        self.difficulty_var.set(session.difficulty)
+        self.primary_value = session.primary_target_value
+        self.primary_var.set(
+            f"{session.primary_target_value:,}" if session.primary_target_value else ""
+        )
+        self._reset_sort()
         self._refresh_table()
 
     def _save(self):
+        value, error = self._parse_primary_amount()
+        if error is None:
+            self.primary_value = value
+
         save_session(Session(
             artifacts=self._current_artifacts(),
-            difficulty="Hard" if self.difficulty_var.get() == 'Hard' else "Normal"
+            difficulty="Hard" if self.difficulty_var.get() == "Hard" else "Normal",
+            primary_target_value=self.primary_value,
         ))
 
     def _current_artifacts(self):
@@ -421,6 +566,8 @@ class KortzHeistApp(ttk.Frame):
             "client_target": False,
             "solo_available": artifact.location != ArtifactLocations.CRISPGALLERY,
         }
+
+        self._reset_sort()
         self._refresh_table()
         self._save()
 
@@ -430,7 +577,43 @@ class KortzHeistApp(ttk.Frame):
         self.price_var.set("")
         self.name_box.focus_set()
 
+    # primary target
+    def _parse_primary_amount(self) -> tuple[int | None, str | None]:
+        raw = self.primary_var.get().strip().replace(",", "").replace("$", "")
+        if not raw:
+            return 0, None
+        try:
+            value = float(raw)
+        except ValueError:
+            return None, "Enter the primary target as a number (e.g. 1200000 or 1200)."
+        if value < 0:
+            return None, "The primary target value can't be negative."
+        if value < 1000:
+            value *= 1000
+        return round(value), None
+
+    def _commit_primary(self, event=None):
+        value, error = self._parse_primary_amount()
+        if error:
+            self.plan_error_var.set(error)
+            return "break"
+        self.primary_value = value
+        self.primary_var.set(f"{value:,}" if value else "")
+        self._save()
+        return "break"
+
+    def _on_primary_enter(self, event=None):
+        self._commit_primary()
+        self._on_solve()
+        return "break"
+
     # sorting logic
+    def _reset_sort(self):
+        self._sort_column = None
+        self._sort_reverse = False
+        for column_key, base_title in self._headings.items():
+            self.tree.heading(column_key, text=base_title)
+
     def _sort_by_column(self, col):
         if self._sort_column == col:
             if self._sort_reverse:
@@ -471,6 +654,9 @@ class KortzHeistApp(ttk.Frame):
         item_entries = list(self.items.items())
         if self._sort_column:
             item_entries.sort(key=self._get_sort_key, reverse=self._sort_reverse)
+        else:
+            # Default view: most recent addition first.
+            item_entries.reverse()
 
         for name, d in item_entries:
             warning = price_warning(d["type"], d["price"])
@@ -586,9 +772,29 @@ class KortzHeistApp(ttk.Frame):
         dialog.bind("<Escape>", lambda e: dialog.destroy())
 
     def _on_solve(self):
+        self.plan_error_var.set("")
         if not self.items:
             messagebox.showinfo("Nothing to solve", "Add at least one artifact first.")
             return
+
+        primary_value, error = self._parse_primary_amount()
+        if error:
+            self.plan_error_var.set(error)
+            self.primary_entry.focus_set()
+            return
+
+        skip_buyer = self.skip_buyer_var.get()
+        client_count = sum(1 for d in self.items.values() if d["client_target"])
+        if not skip_buyer and client_count < 2:
+            self.plan_error_var.set(
+                "Missing artifacts for the buyer's request"
+                "or enable 'Ignore buyer request'."
+            )
+            return
+
+        self.primary_value = primary_value
+        self.primary_var.set(f"{primary_value:,}" if primary_value else "")
+        self._save()
 
         self.solve_btn.configure(state="disabled", text="Calculating...")
         self.clear_btn.configure(state="disabled")
@@ -598,7 +804,6 @@ class KortzHeistApp(ttk.Frame):
         self.update_idletasks()
 
         num_players = int(self.players_var.get())
-        skip_buyer = self.skip_buyer_var.get()
         skip_inaccessible = self.skip_inaccessible_var.get()
         artifacts = self._current_artifacts()
 
@@ -626,39 +831,160 @@ class KortzHeistApp(ttk.Frame):
                 skip_inaccessible=skip_inaccessible,
             )
         except ValueError as error:
-            lines.append(f"ERROR: {error}")
+            self.plan_error_var.set(f"Cannot establish plan: {error}")
         finally:
             self.solve_btn.configure(state="normal", text="Solve Plan (Enter)")
             self.clear_btn.configure(state="normal")
 
         if result:
-            for i, bag in enumerate(result.assignment, start=1):
-                bag_value = sum(a.value for a in bag)
-                used_percent = sum(a.space_percent for a in bag)
-                lines.append(f"Player {i} Bag ({used_percent}% full | ${bag_value:,}):")
-                for a in bag:
+            self._render_results(result, primary_value, lines)
+            self._show_results()
+
+    def _render_results(self, result, primary_value, lines):
+        estimate = estimate_payouts(
+            result.assignment,
+            result.bonus_applied,
+            len(result.assignment),
+            primary_value,
+            left_behind=result.left_behind,
+        )
+        self._last_estimate = estimate
+        num_players = estimate.num_players
+
+        if estimate.buyer_bonus_per_player:
+            buyer_text = f"+${estimate.buyer_bonus_per_player:,}"
+        else:
+            buyer_text = "$0 (request not fulfilled)"
+
+        self.results_summary_var.set(
+            f"{num_players} player{"s" if num_players > 1 else ""}\n"
+            f"Primary target ${estimate.primary_total:,} - "
+            f"Secondary loot ${estimate.loot_total:,}\n"
+            f"Buyer request {buyer_text} - "
+            f"Estimated crew payout: ${estimate.crew_total:,}"
+        )
+
+        notes = list(lines)
+        self.results_notes_var.set("\n".join(notes))
+
+        for child in self.cards_frame.winfo_children():
+            child.destroy()
+
+        self.cards_frame.columnconfigure(0, weight=1, uniform="card")
+        self.cards_frame.columnconfigure(1, weight=1, uniform="card")
+
+        for index, payout in enumerate(estimate.players):
+            card = ttk.LabelFrame(
+                self.cards_frame,
+                text=f"Player {payout.player} — {payout.role}",
+                padding=10,
+            )
+            card.grid(row=index // 2, column=index % 2, sticky="nsew", padx=6, pady=6)
+
+            ttk.Label(
+                card,
+                text=f"Bag {payout.used_percent}% full · ${payout.bag_value:,} in loot",
+            ).pack(anchor="w", pady=(0, 4))
+
+            tree = ttk.Treeview(
+                card,
+                columns=("space", "value"),
+                show="tree headings",
+                height=max(1, len(payout.artifacts)),
+            )
+            tree.heading("#0", text="Artifact")
+            tree.heading("space", text="Space")
+            tree.heading("value", text="Value")
+            tree.column("#0", width=280, anchor="w")
+            tree.column("space", width=110, anchor="center")
+            tree.column("value", width=110, anchor="e")
+            tree.pack(fill="x", expand=True, pady=(0, 6))
+
+            if payout.artifacts:
+                for a in payout.artifacts:
                     flags = []
                     if a.is_client_target:
                         flags.append("REQ")
                     if num_players == 1 and not a.solo_available:
                         flags.append("LOCKED")
+                    label = a.name + (f" [{'/'.join(flags)}]" if flags else "")
+                    tree.insert(
+                        "", "end",
+                        text=label,
+                        values=(f"{a.space_percent}%", f"${a.value:,}"),
+                    )
+            else:
+                tree.insert("", "end", text="(empty bag)", values=("", ""))
 
-                    flag_str = f" [{', '.join(flags)}]" if flags else ""
-                    lines.append(f"  - {a.name:<30} {a.space_percent:>3}% | ${a.value:>7,}{flag_str}")
-                lines.append("")
+            breakdown = ttk.Frame(card)
+            breakdown.pack(fill="x")
 
-            lines.append(f"Client set completed:  {result.client_set_completed} (bonus: ${result.bonus_applied:,})")
-            lines.append(f"TOTAL PAYOUT:          ${result.total_value:,}")
+            rows = [("Secondary loot share", payout.loot_share)]
+            if payout.primary_share:
+                rows.append(("Primary target (100%)", payout.primary_share))
+            if payout.flat_cut:
+                rows.append(("Task cut", payout.flat_cut))
+            rows.append(("Buyer request bonus", payout.buyer_bonus))
 
-        self.results_text.configure(state="normal")
-        self.results_text.delete("1.0", tk.END)
-        self.results_text.insert("1.0", "\n".join(lines))
-        self.results_text.configure(state="disabled")
+            for row, (label, value) in enumerate(rows):
+                ttk.Label(breakdown, text=label).grid(row=row, column=0, sticky="w")
+                ttk.Label(breakdown, text=f"${value:,}").grid(row=row, column=1, sticky="e")
+            breakdown.columnconfigure(0, weight=1)
+
+            ttk.Separator(card, orient="horizontal").pack(fill="x", pady=(6, 2))
+            ttk.Label(
+                card,
+                text=f"Estimated payout: ${payout.total:,}",
+                font=("Segoe UI", 10, "bold"),
+            ).pack(anchor="e")
+
+        self._summary_text = self._format_summary(estimate)
+        self.copy_status_var.set("")
+        self._bind_results_wheel(self.cards_frame)
+        self._results_canvas.yview_moveto(0)
+
+    def _format_summary(self, estimate: PayoutEstimate) -> str:
+        lines = [
+            f"Kortz Center heist - {estimate.num_players} player(s)",
+            f"Secondary loot: ${estimate.loot_total:,}",
+            f"Primary target: ${estimate.primary_total:,} (owner)",
+            f"Buyer request: ${estimate.buyer_bonus_per_player:,} each"
+            f" ({'completed' if estimate.buyer_bonus_per_player else 'not fulfilled'})",
+            "",
+        ]
+        for payout in estimate.players:
+            lines.append(f"Player {payout.player} - {payout.role}: ${payout.total:,}")
+            if payout.artifacts:
+                for artifact in payout.artifacts:
+                    lines.append(
+                        f"  - {artifact.name} [{artifact.space_percent}% | ${artifact.value:,}]"
+                    )
+            else:
+                lines.append("  (empty bag)")
+            lines.append(
+                f"  Loot share ${payout.loot_share:,} | "
+                f"Primary ${payout.primary_share:,} | "
+                f"Task cut ${payout.flat_cut:,} | "
+                f"Buyer bonus ${payout.buyer_bonus:,}"
+            )
+            lines.append("")
+        lines.append(f"Estimated crew payout: ${estimate.crew_total:,}")
+
+        return "\n".join(lines)
+
+    def _copy_summary(self):
+        if not self._summary_text:
+            return
+        self.master.clipboard_clear()
+        self.master.clipboard_append(self._summary_text)
+        self.copy_status_var.set("Copied to clipboard.")
+        self.after(2000, lambda: self.copy_status_var.set(""))
 
 
 def main():
     root = tk.Tk()
     root.title("Kortz Center Heist Optimizer")
+    root.minsize(980, 700)
 
     threading.Thread(
         target=check_for_updates,
