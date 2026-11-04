@@ -372,14 +372,18 @@ class KortzHeistApp(ttk.Frame):
 
         scroll_container = ttk.Frame(self.results_page)
         scroll_container.pack(fill="both", expand=True, pady=(0, 6))
+        scroll_container.columnconfigure(0, weight=1)
+        scroll_container.rowconfigure(0, weight=1)
 
         self._results_canvas = tk.Canvas(scroll_container, highlightthickness=0)
-        results_scrollbar = ttk.Scrollbar(
+        self._results_scrollbar = ttk.Scrollbar(
             scroll_container, orient="vertical", command=self._results_canvas.yview
         )
-        self._results_canvas.configure(yscrollcommand=results_scrollbar.set)
-        results_scrollbar.pack(side="right", fill="y")
-        self._results_canvas.pack(side="left", fill="both", expand=True)
+        self._results_canvas.configure(yscrollcommand=self._results_scrollbar.set)
+        self._results_canvas.grid(row=0, column=0, sticky="nsew")
+        self._results_scrollbar.grid(row=0, column=1, sticky="ns")
+        self._results_scrollbar.grid_remove()
+        self._results_scrollbar_visible = False
 
         self.cards_frame = ttk.Frame(self._results_canvas)
         self._cards_window = self._results_canvas.create_window(
@@ -405,11 +409,29 @@ class KortzHeistApp(ttk.Frame):
 
     def _on_cards_configure(self, event=None):
         self._results_canvas.configure(scrollregion=self._results_canvas.bbox("all"))
+        self._update_results_scrollbar()
 
     def _on_canvas_configure(self, event):
         self._results_canvas.itemconfigure(self._cards_window, width=event.width)
+        self._update_results_scrollbar()
+
+    def _update_results_scrollbar(self):
+        bbox = self._results_canvas.bbox("all")
+        content_height = bbox[3] - bbox[1] if bbox else 0
+        needs_scroll = content_height > self._results_canvas.winfo_height()
+        if needs_scroll == self._results_scrollbar_visible:
+            return
+
+        self._results_scrollbar_visible = needs_scroll
+        if needs_scroll:
+            self._results_scrollbar.grid()
+        else:
+            self._results_scrollbar.grid_remove()
+            self._results_canvas.yview_moveto(0)
 
     def _on_results_wheel(self, event):
+        if not self._results_scrollbar_visible:
+            return "break"
         if getattr(event, "num", None) == 4:
             delta = -1
         elif getattr(event, "num", None) == 5:
@@ -433,6 +455,8 @@ class KortzHeistApp(ttk.Frame):
     def _show_results(self):
         self.setup_page.pack_forget()
         self.results_page.pack(fill="both", expand=True)
+        self.results_page.update_idletasks()
+        self._update_results_scrollbar()
         self._results_canvas.yview_moveto(0)
 
     def _on_new_session(self):
@@ -1003,7 +1027,7 @@ class KortzHeistApp(ttk.Frame):
 def main():
     root = tk.Tk()
     root.title("Kortz Center Heist Optimizer")
-    root.minsize(980, 700)
+    root.minsize(980, 450)
 
     threading.Thread(
         target=check_for_updates,
