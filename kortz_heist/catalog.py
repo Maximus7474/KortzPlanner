@@ -59,6 +59,7 @@ CATALOG = [
     ("Fertility Statue (Bronze)", ArtifactType.HORIZONTAL_CASE_CUSHION, None),
     ("Fertility Statue (Gold)", ArtifactType.HORIZONTAL_CASE_CUSHION, ArtifactLocations.CRISPGALLERY),
     ("Fertility Statue (Silver)", ArtifactType.HORIZONTAL_CASE_CUSHION, ArtifactLocations.CRISPGALLERY),
+    ("Fertility Statue (Acajou)", ArtifactType.HORIZONTAL_CASE_CUSHION, ArtifactLocations.MAINFLOOR),
     ## Needs checking, pretty sure some statues will spawn main floor and some upper floor
     ("Oeuf de Coquard Verdoyant", ArtifactType.HORIZONTAL_CASE_CUSHION, None),
     ("Oeuf de Coquard de Vouivre", ArtifactType.HORIZONTAL_CASE_CUSHION, None),
