@@ -40,7 +40,8 @@ total payout, subject to each player having one bag of fixed capacity.
   solo-obtainable - that variable data is a `Session` (`session.py`).
 - Three specific artifacts make up the **client's request**. Securing all
   three - by any combination of players, not necessarily one - earns a
-  flat, fixed **$100,000 bonus** (`CLIENT_SET_BONUS` in `models.py`) on
+  flat, fixed **$100,000 bonus per participant** (`CLIENT_SET_BONUS` in
+  `models.py`) on
   top of their individual values.
 - Each type has a typical price range, used only to flag likely typos or
   unusual values as you enter them - it never blocks or clamps a price:
@@ -55,8 +56,25 @@ total payout, subject to each player having one bag of fixed capacity.
   `solver.solve()` finds the exact optimum via memoized search (fine for a
   single heist's item count; not built to scale to huge item lists).
 - Solo runs (1 player): items marked `solo_available=False` are **not**
-  auto-excluded - the CLI just flags them so you can double-check whether
-  they're really reachable before committing to a route.
+  auto-excluded.
+
+## Estimated per-player payout
+
+After a plan is established, the app reports what each participant actually
+receives:
+
+| Component | Owner (P1) | Each accomplice (P2-P4) |
+|---|---|---|
+| Primary target | 100% of the entered value | $0 |
+| Task cut | - | $100,000 |
+| Secondary loot (every artifact in a bag) | even split (+ remainder) | even split |
+| Buyer request bonus (50k Normal / 100k Hard) | paid in full | paid in full |
+
+The buyer-request bonus is paid individually on top of everything and is
+never split. Left-behind loot is not counted. If the secondary split does
+not divide evenly, the remainder goes to the owner so the totals reconcile
+exactly. The primary target value is a separate input, not an artifact: it
+does not consume bag space.
 
 ## Layout
 
@@ -65,9 +83,10 @@ kortz_heist/
   models.py   - Artifact / ArtifactType, space-cost table
   catalog.py  - CATALOG: static (name, type) roster - edit to match the
                 real full item list, up to ~30 entries
-  session.py  - Session: this heist's prices + flags; build/save/load
+  session.py  - Session: this heist's prices + flags + primary target;
+                build/save/load
+  payout.py   - per-player payout estimate (owner/accomplice split)
   solver.py   - solve(artifacts, num_players, ...) -> SolveResult
-  cli.py      - bare CLI: builds or reuses a session, prints the plan
   gui.py      - Tkinter GUI: same workflow, point-and-click
 run_gui.py    - PyInstaller entry point for the GUI (see "Packaging" below)
 session.json  - saved automatically after building a session (gitignore
@@ -76,15 +95,6 @@ session.json  - saved automatically after building a session (gitignore
 
 ## Running it
 
-### CLI (Command-Line Interface)
-Run from a terminal:
-```
-python -m kortz_heist.cli
-```
-
-The CLI is best for quick, scriptable runs. You enter artifact prices, client targets, and solo availability via prompts, then specify the player count. Results are printed as text to the console.
-
-### GUI (Graphical User Interface)
 Launch the graphical interface:
 ```
 python -m kortz_heist.gui
@@ -92,15 +102,11 @@ python -m kortz_heist.gui
 
 The GUI provides a point-and-click workflow for artifact entry, flagging, and solving. It is ideal for interactive use, visual verification, and managing the client target / solo availability flags.
 
-### Key Difference: CLI vs GUI
-- **CLI**: Text-only prompts in a terminal; no visual artifact management, no inline flag toggling, and output is plain text. Best for automation or when you prefer keyboard-only input.
-- **GUI**: Full visual interface with autocomplete artifact names, price validation, clickable Client Target and Solo OK flags, and a collapsible results panel. Best for interactive heist planning.
-
 ### Difficulty Bonuses
-- **Normal difficulty**: $50,000 flat bonus for completing the client's three-piece request.
-- **Hard difficulty**: $100,000 flat bonus for completing the client's three-piece request.
+- **Normal difficulty**: $50,000 flat bonus per participant for completing the client's three-piece request.
+- **Hard difficulty**: $100,000 flat bonus per participant for completing the client's three-piece request.
 
-These values are defined in `models.py` `CLIENT_SET_BONUS` and are applied on top of individual artifact values when all three client-target items are secured.
+These values are defined in `models.py` `CLIENT_SET_BONUS` and are paid individually on top of each participant's share when all three client-target items are secured.
 
 First run (either one): enter a price for each artifact on offer this
 heist (out-of-range prices get flagged inline but are still accepted),
@@ -108,32 +114,11 @@ which three are the client's request, and which are solo-unavailable.
 This gets saved to `session.json`. (The client-set bonus is fixed, so it
 isn't asked for.)
 
-**Reprocessing after a player-count change**: run it again (CLI or GUI) -
+**Reprocessing after a player-count change**: run it again (GUI) -
 it detects the saved session and offers to reuse it. Accept, and you're
 only asked for the new player count; none of the prices/flags need
 re-entering. To start a fresh heist, delete `session.json` (or decline the
 reuse prompt / use File > New session in the GUI) and enter a new one.
-
-### CLI Output
-
-```
-Player 1 bag (100% full, $ 330,500):
-  - Byzantine Hoops                     [ 10% |  32,000$ ]
-  - Oeuf de Coquard de Vouivre          [ 20% |  60,000$ ]
-  - Memento Non Mori (Diamond)          [ 30% |  97,500$ ]
-  - Art Deco Rings                      [ 10% |  31,000$ ]
-  - Pharaonic Bangles                   [ 10% |  31,000$ ]
-  - Coquard Rings                       [ 10% |  33,000$ ]
-  - Art Deco Circlets                   [ 10% |  46,000$ ]
-
-Player 2 bag (100% full, $ 307,000):
-  - Fertility Statue (Ivory)            [ 20% |  62,000$ ]
-  - Don't Forgo These Blueprints        [ 50% | 152,500$ ]
-  - Coquard Carcanet (Yellow Diamond)   [ 30% |  92,500$ ]
-
-Client set completed: True (bonus: $100,000)
-TOTAL PAYOUT: $737,500
-```
 
 ## Using the GUI
 
@@ -148,19 +133,22 @@ TOTAL PAYOUT: $737,500
 - **Fix a mistake**: double-click a row to open an edit dialog (change
   price, toggle flags, or remove the item entirely); Enter saves, Esc
   cancels. Or select a row and click "Remove selected" / press Delete.
-- **File menu**: "New session" clears everything, "Reload saved session"
-  reverts to what's on disk, discarding unsaved changes.
+- **File menu**: "New session" clears everything, "Reload saved session" reverts to what's on disk, discarding unsaved changes.
+- **Primary target value**: enter the value of the primary target in the
+  configuration section. It is paid in full to you (P1) and is never part
+  of the secondary-loot split. Blank means $0.
+- **Establish plan**: hides the setup page and opens a plan page listing
+  each player's artifacts plus their estimated payout. "Back to setup"
+  returns without losing what you entered.
 - Every add/edit/remove/toggle auto-saves to `session.json`.
-- Pick the player count and click "Solve" (or press Enter with focus on
-  the player-count box) to see the bag assignment in the Plan panel.
+- Set the player count, difficulty and primary target value, then click "Establish plan" (or press Enter
+  with focus on the player-count or primary-target box). The setup page is hidden and a plan page shows each player's loot and estimated payout.
 
 ### GUI Checkbox Behaviors
 - **Ignore buyer request**: When checked, the solver maximizes profit without requiring the client's three-piece set. The client-set bonus is still available if all three targets are collected incidentally, but it's not required for a valid solution. This is useful when you only care about total value rather than fulfilling the client's specific request.
 - **Skip inaccessible loot (solo)**: When running with 1 player, checking this flag automatically excludes artifacts marked `solo_available=False` from the solving process. Unchecking it (the default) will include those items in the plan but flag them with a "LOCKED" warning so you can decide if they're actually reachable with crew members.
 
 These two flags interact: with solo mode + skip inaccessible enabled + ignore buyer unchecked, you get the strictest validation; with ignore buyer checked, the client-set requirement is waived regardless of solo/squad mode.
-- Pick the player count and click "Solve" (or press Enter with focus on
-  the player-count box) to see the bag assignment in the Plan panel.
 
 ## Packaging the GUI with PyInstaller
 
@@ -189,7 +177,8 @@ The executable lands in `dist/`. Notes:
   `session` have no UI dependency - `gui.py` is just one consumer of them.
   Any other frontend can build a `{name: price}` dict, call
   `build_session(...)`, `save_session` it, then
-  `solve(session.artifacts, num_players, client_set_bonus=...)` and render
+  `solve(session.artifacts, num_players, difficulty=...)`, call
+  `payout.estimate_payouts(...)` for per-player cuts, and render
   `SolveResult.assignment` / `.left_behind` / `.total_value` /
   `.client_set_completed`. `load_session()` covers reprocessing when the
   player count changes.
