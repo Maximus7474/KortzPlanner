@@ -7,6 +7,7 @@ reprocessed - e.g. rerun with a different player count - without
 re-entering everything.
 """
 import json, sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal, NamedTuple, get_args
 from collections.abc import Iterable
@@ -38,6 +39,24 @@ class Session(NamedTuple):
     artifacts: list[Artifact]
     difficulty: Difficulty
     primary_target_value: int = 0
+    last_updated: str = ""  # ISO-8601 UTC timestamp of the last save
+
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def format_last_updated(value: str) -> str:
+    """Render a stored ISO timestamp in the machine's local time."""
+    if not value:
+        return "not saved yet"
+    try:
+        stamp = datetime.fromisoformat(value)
+    except (TypeError, ValueError):
+        return value
+    if stamp.tzinfo is not None:
+        stamp = stamp.astimezone()
+    return stamp.strftime("%Y-%m-%d %H:%M:%S")
 
 
 def build_session(
@@ -86,12 +105,17 @@ def build_session(
     )
 
 
-def save_session(session: Session, path: Path = DEFAULT_SESSION_PATH) -> None:
+def save_session(session: Session, path: Path = DEFAULT_SESSION_PATH) -> str:
     """Persist this heist's artifact layout + payout settings so it can be
-    reloaded later (e.g. to rerun the solver with a different player count)."""
+    reloaded later (e.g. to rerun the solver with a different player count).
+
+    Writes the current UTC time as ``last_updated`` and returns it.
+    """
+    last_updated = _utc_now()
     payload = {
         "difficulty": session.difficulty,
         "primary_target_value": session.primary_target_value,
+        "last_updated": last_updated,
         "artifacts": [
             {
                 "name": a.name,
@@ -107,6 +131,7 @@ def save_session(session: Session, path: Path = DEFAULT_SESSION_PATH) -> None:
     print(f'Saving session with {len(session.artifacts)} artifacts to', path)
 
     path.write_text(json.dumps(payload, indent=2))
+    return last_updated
 
 
 def load_session(path: Path = DEFAULT_SESSION_PATH) -> Session | None:
@@ -136,8 +161,20 @@ def load_session(path: Path = DEFAULT_SESSION_PATH) -> Session | None:
     # Older session files predate the primary target value.
     primary_target_value = int(raw.get("primary_target_value") or 0)
 
+    # Older session files also predate the save timestamp; fall back to the
+    # file's own modification time so the GUI still shows something useful.
+    last_updated = str(raw.get("last_updated") or "")
+    if not last_updated:
+        try:
+            last_updated = datetime.fromtimestamp(
+                path.stat().st_mtime, timezone.utc
+            ).isoformat(timespec="seconds")
+        except OSError:
+            last_updated = ""
+
     return Session(
         artifacts=artifacts,
         difficulty=difficulty,
         primary_target_value=primary_target_value,
+        last_updated=last_updated,
     )
