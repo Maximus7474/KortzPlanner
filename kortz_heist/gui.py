@@ -945,30 +945,33 @@ class KortzHeistApp(ttk.Frame):
 
     def _format_summary(self, estimate: PayoutEstimate) -> str:
         lines = [
-            f"Kortz Center heist - {estimate.num_players} player(s)",
-            f"Secondary loot: ${estimate.loot_total:,}",
-            f"Primary target: ${estimate.primary_total:,} (owner)",
-            f"Buyer request: ${estimate.buyer_bonus_per_player:,} each"
-            f" ({'completed' if estimate.buyer_bonus_per_player else 'not fulfilled'})",
+            "```",
+            f"Kortz Center Heist — {estimate.num_players} Player{"s" if estimate.num_players > 1 else ""}",
+            f"Secondary Loot: ${estimate.loot_total:,} | Primary Target:${estimate.primary_total:,}",
+            f"Buyer Bonus:    ${estimate.buyer_bonus_per_player:,} ({'Completed' if estimate.buyer_bonus_per_player else 'Skipped'})\n",
             "",
         ]
         for payout in estimate.players:
-            lines.append(f"Player {payout.player} - {payout.role}: ${payout.total:,}")
+            lines.append(f"Player {payout.player} ({payout.role}) — Bag: {payout.used_percent}% | ${payout.bag_value:,}")
             if payout.artifacts:
                 for artifact in payout.artifacts:
-                    lines.append(
-                        f"  - {artifact.name} [{artifact.space_percent}% | ${artifact.value:,}]"
-                    )
+                    flags = []
+                    if artifact.is_client_target:
+                        flags.append("REQ")
+                    if estimate.num_players == 1 and not artifact.solo_available:
+                        flags.append("LOCKED")
+                    flag_str = f" [{'/'.join(flags)}]" if flags else ""
+
+                    name_display = artifact.name + flag_str
+                    lines.append(f" • {name_display:<26} {artifact.space_percent:>3}%   ${artifact.value:>9,}")
             else:
-                lines.append("  (empty bag)")
-            lines.append(
-                f"  Loot share ${payout.loot_share:,} | "
-                f"Primary ${payout.primary_share:,} | "
-                f"Task cut ${payout.flat_cut:,} | "
-                f"Buyer bonus ${payout.buyer_bonus:,}"
-            )
+                lines.append(" • (empty bag)")
+
+            lines.append(f"➔ Player Payout: ${payout.total:,}")
             lines.append("")
-        lines.append(f"Estimated crew payout: ${estimate.crew_total:,}")
+
+        lines.append(f"Estimated Crew Total: ${estimate.crew_total:,}")
+        lines.append("```")
 
         return "\n".join(lines)
 
