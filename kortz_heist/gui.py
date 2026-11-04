@@ -14,7 +14,13 @@ from tkinter import messagebox, ttk
 from .catalog import CATALOG_BY_NAME, CATALOG_NAMES
 from .models import Artifact, ArtifactLocations, price_warning
 from .payout import PayoutEstimate, estimate_payouts
-from .session import Session, DIFFICULTIES, load_session, save_session
+from .session import (
+    Session,
+    DIFFICULTIES,
+    format_last_updated,
+    load_session,
+    save_session,
+)
 from .updater import check_for_updates
 from .solver import solve
 
@@ -311,6 +317,11 @@ class KortzHeistApp(ttk.Frame):
         )
         self.skip_inaccessible_check.pack(side="left")
 
+        self.last_updated_var = tk.StringVar(value="Last updated: not saved yet")
+        ttk.Label(
+            flags_row, textvariable=self.last_updated_var, foreground="#666666"
+        ).pack(side="right")
+
         self.plan_error_var = tk.StringVar()
         ttk.Label(
             controls_frame,
@@ -487,17 +498,22 @@ class KortzHeistApp(ttk.Frame):
         )
         self._reset_sort()
         self._refresh_table()
+        self._set_last_updated(session.last_updated)
+
+    def _set_last_updated(self, value: str):
+        self.last_updated_var.set(f"Last updated: {format_last_updated(value)}")
 
     def _save(self):
         value, error = self._parse_primary_amount()
         if error is None:
             self.primary_value = value
 
-        save_session(Session(
+        last_updated = save_session(Session(
             artifacts=self._current_artifacts(),
             difficulty="Hard" if self.difficulty_var.get() == "Hard" else "Normal",
             primary_target_value=self.primary_value,
         ))
+        self._set_last_updated(last_updated)
 
     def _current_artifacts(self):
         return [
