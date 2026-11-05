@@ -742,6 +742,7 @@ class KortzHeistApp(ttk.Frame):
     def _on_clear_all(self):
         if self.items and not messagebox.askyesno("Clear all", "Remove every item from the plan?"):
             return
+        self.primary_var.set("")
         self.items.clear()
         self._refresh_table()
         self._save()
