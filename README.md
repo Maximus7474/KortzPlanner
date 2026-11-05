@@ -16,13 +16,16 @@ Given a list of lootable artifacts (paintings, cases, etc.) and a crew size
 (1-4 players), works out which items each player should carry to maximize
 total payout, subject to each player having one bag of fixed capacity.
 
-> [!NOTE]
-> Still needs further evaluation to adapt for second runs in a given week, so I can add further settings to properly estimate revenue of a given run.
-
-<details>
-  <summary>GUI Preview</summary>
-  <img width="873" height="696" alt="image" src="https://github.com/user-attachments/assets/4f65840b-b817-44f2-ba20-02e4728d54f5" />
-</details>
+> <details>
+>  <summary>GUI Preview</summary>
+>  <h3>Setup View</h3>
+>  <img width="992" height="576" alt="image" src="https://github.com/user-attachments/assets/863ad92d-6388-4dbc-9c9e-90f83b358c9b" />
+>  <h3>Plan View</h3>
+>  <img width="990" height="508" alt="image" src="https://github.com/user-attachments/assets/e735d537-4039-4a7f-bcaa-4e7738b80c7e" />
+>  <h3>Copied output</h3>
+>  <p>This is formatted for discord so you can share the plan with friends.</p>
+>  <img width="504" height="517" alt="image" src="https://github.com/user-attachments/assets/8d752ebf-10c4-4d2a-b4de-1605be8266d6" />
+> </details>
 
 ## How it models the problem
 
@@ -34,6 +37,7 @@ total payout, subject to each player having one bag of fixed capacity.
   | Vertical case | 30% |
   | Horizontal case, red cushion | 20% |
   | Horizontal case (plain) | 10% |
+  | Cash case (loading bay) | 30% |
 - Artifact **names and categories are static** (a fixed roster of ~30,
   `catalog.py`) but **price varies heist to heist**, along with which items
   are on offer, which three make up the client's request, and which are
@@ -51,6 +55,7 @@ total payout, subject to each player having one bag of fixed capacity.
   | Vertical case | $80,000 - $100,000 |
   | Horizontal case, cushion | $30,000 - $40,000 |
   | Horizontal case (plain) | $20,000 - $50,000 |
+  | Cash case (loading bay) | $120,000 - $150,000 |
 - This is a multiple-knapsack assignment problem: which subset of items to
   take, and which player carries each, to maximize total crew payout (loot
   value plus the bonus paid to every participant). `solver.solve()` finds
