@@ -16,16 +16,16 @@ Given a list of lootable artifacts (paintings, cases, etc.) and a crew size
 (1-4 players), works out which items each player should carry to maximize
 total payout, subject to each player having one bag of fixed capacity.
 
-<details>
-  <summary>GUI Preview</summary>
-  <h3>Setup View</h3>
-  <img width="992" height="576" alt="image" src="https://github.com/user-attachments/assets/863ad92d-6388-4dbc-9c9e-90f83b358c9b" />
-  <h3>Plan View</h3>
-  <img width="990" height="508" alt="image" src="https://github.com/user-attachments/assets/e735d537-4039-4a7f-bcaa-4e7738b80c7e" />
-  <h3>Copied output</h3>
-  <p>This is formatted for discord so you can share the plan with friends.</p>
-  <img width="504" height="517" alt="image" src="https://github.com/user-attachments/assets/8d752ebf-10c4-4d2a-b4de-1605be8266d6" />
-</details>
+> <details>
+>  <summary>GUI Preview</summary>
+>  <h3>Setup View</h3>
+>  <img width="992" height="576" alt="image" src="https://github.com/user-attachments/assets/863ad92d-6388-4dbc-9c9e-90f83b358c9b" />
+>  <h3>Plan View</h3>
+>  <img width="990" height="508" alt="image" src="https://github.com/user-attachments/assets/e735d537-4039-4a7f-bcaa-4e7738b80c7e" />
+>  <h3>Copied output</h3>
+>  <p>This is formatted for discord so you can share the plan with friends.</p>
+>  <img width="504" height="517" alt="image" src="https://github.com/user-attachments/assets/8d752ebf-10c4-4d2a-b4de-1605be8266d6" />
+> </details>
 
 ## How it models the problem
 
