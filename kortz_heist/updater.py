@@ -1,5 +1,6 @@
 import json
-import sys
+import queue
+import threading
 import urllib.request
 import webbrowser
 from packaging.version import Version
@@ -51,13 +52,10 @@ def show_update_window(root: tk.Tk, current_version: str, latest_tag: str, relea
     tk.Button(btn_frame, text="Close", command=win.destroy, width=8).pack(side=tk.LEFT, padx=5)
 
 
-def check_for_updates(root: tk.Tk | None = None):
-    """
-    Queries GitHub releases API to check if a newer version exists.
-    Runs quietly if offline or if the API rate limit is hit.
-    """
+def fetch_update(timeout: float = 4.0) -> tuple[str, str] | None:
+    """Query the GitHub releases API for a newer version."""
     if __version__ == "dev":
-        return
+        return None
 
     try:
         url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
@@ -65,35 +63,47 @@ def check_for_updates(root: tk.Tk | None = None):
             url,
             headers={"User-Agent": "KortzHeistOptimizer-Updater"}
         )
-
-        with urllib.request.urlopen(req, timeout=4) as response:
+        with urllib.request.urlopen(req, timeout=timeout) as response:
             data = json.loads(response.read().decode())
-            latest_tag = data.get("tag_name")
-            release_url = data.get("html_url")
+    except Exception:
+        # Offline/DNS/rate limit/malformed payload - check silently next time.
+        return None
 
-            if not latest_tag:
-                return
+    latest_tag = data.get("tag_name")
+    release_url = data.get("html_url")
+    if not latest_tag or not release_url:
+        return None
 
-            if Version(latest_tag) > Version(__version__):
-                if root:
-                    root.after(50, lambda: show_update_window(root, __version__, latest_tag, release_url))
-                else:
-                    print(
-                        f"\n"
-                        f"┌──────────────────────────────────────────────────────────────────┐\n"
-                        f"│                         UPDATE AVAILABLE                         │\n"
-                        f"├──────────────────────────────────────────────────────────────────┤\n"
-                        f"│  Current Version: {__version__:<46} │\n"
-                        f"│  Latest Version:  {latest_tag:<46} │\n"
-                        f"│                                                                  │\n"
-                        f"│  Download:                                                       │\n"
-                        f"│  {release_url:<63} │\n"
-                        f"└──────────────────────────────────────────────────────────────────┘\n"
-                    )
-            else:
-                if not root:
-                    print("You are running the latest version.")
+    try:
+        if Version(latest_tag) <= Version(__version__):
+            return None
+    except Exception:
+        return None
 
-    except Exception as e:
-        if not root:
-            print(f"Could not check for updates: {e}", file=sys.stderr)
+    return latest_tag, release_url
+
+
+def check_for_updates(root: tk.Tk, poll_ms: int = 200) -> None:
+    """Offer an update dialog when a newer release exists."""
+    results: queue.Queue = queue.Queue()
+
+    def fetch():
+        try:
+            results.put(fetch_update())
+        except Exception:
+            results.put(None)
+
+    threading.Thread(target=fetch, daemon=True).start()
+
+    def poll():
+        try:
+            update = results.get_nowait()
+        except queue.Empty:
+            root.after(poll_ms, poll)
+            return
+
+        if update:
+            latest_tag, release_url = update
+            show_update_window(root, __version__, latest_tag, release_url)
+
+    root.after(poll_ms, poll)

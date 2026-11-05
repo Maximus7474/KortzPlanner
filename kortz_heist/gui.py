@@ -7,7 +7,6 @@ Layout:
 - Plan page: shown once a plan is established; hides the setup page and
   lists each player's bag plus their estimated payout.
 """
-import threading
 import tkinter as tk
 from tkinter import messagebox, ttk
 
@@ -1030,13 +1029,9 @@ def main():
     root.title("Kortz Center Heist Optimizer")
     root.minsize(980, 450)
 
-    threading.Thread(
-        target=check_for_updates,
-        args=(root,),
-        daemon=True
-    ).start()
-
     KortzHeistApp(root)
+    # Start the check once the startup prompt (if any) is answered, so the
+    check_for_updates(root)
     root.mainloop()
 
 
