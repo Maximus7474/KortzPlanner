@@ -52,9 +52,10 @@ total payout, subject to each player having one bag of fixed capacity.
   | Horizontal case, cushion | $30,000 - $40,000 |
   | Horizontal case (plain) | $20,000 - $50,000 |
 - This is a multiple-knapsack assignment problem: which subset of items to
-  take, and which player carries each, to maximize total value + bonus.
-  `solver.solve()` finds the exact optimum via memoized search (fine for a
-  single heist's item count; not built to scale to huge item lists).
+  take, and which player carries each, to maximize total crew payout (loot
+  value plus the bonus paid to every participant). `solver.solve()` finds
+  the exact optimum via memoized search (fine for a single heist's item
+  count; not built to scale to huge item lists).
 - Solo runs (1 player): items marked `solo_available=False` are **not**
   auto-excluded.
 
