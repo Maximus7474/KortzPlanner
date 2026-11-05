@@ -17,10 +17,10 @@ class SolverError(Exception):
 class SolveResult:
     assignment: list[list[Artifact]]  # assignment[i] = artifacts given to player i
     left_behind: list[Artifact]
-    total_value: int
+    total_value: int  # loot + per-participant bonus (crew payout before cuts)
     client_set_completed: bool
-    client_set_bonus: int
-    bonus_applied: int
+    client_set_bonus: int  # per participant, when the set is completed
+    bonus_applied: int  # per participant, actually awarded by this plan
 
 
 def solve(
@@ -32,9 +32,9 @@ def solve(
     skip_inaccessible: bool = False,
 ) -> SolveResult:
     """Find the assignment of artifacts to players that maximizes total
-    payout (item values, plus the client-set bonus if all client-target
-    items are collected), subject to each player having one bag of
-    `bag_capacity_units` capacity.
+    crew payout (item values, plus the client-set bonus paid to every
+    participant if all client-target items are collected), subject to each
+    player having one bag of `bag_capacity_units` capacity.
 
     Exact search with memoization - fine for a single heist's item count
     (tens of items), not meant to scale to huge inventories.
@@ -85,7 +85,10 @@ def solve(
             )
             if must_complete_set and not set_completed:
                 return _INFEASIBLE, ()
-            return (client_set_bonus if set_completed else 0), ()
+            # The bonus is paid to every participant, not split from a single pot
+            return (
+                client_set_bonus * num_players if set_completed else 0
+            ), ()
 
         item = items[i]
         cost = item.space_units
