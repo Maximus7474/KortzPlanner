@@ -54,16 +54,17 @@ CATALOG = [
     ("Fold Turkoman", ArtifactType.VERTICAL_CASE, ArtifactLocations.UPPERFLOOR),
     ("Gold Turkoman", ArtifactType.VERTICAL_CASE, ArtifactLocations.UPPERFLOOR),
     ("Cremello Dutch Warmblood", ArtifactType.VERTICAL_CASE, ArtifactLocations.UPPERFLOOR),
+    ("Marble Sabino Criollo", ArtifactType.VERTICAL_CASE, ArtifactLocations.UPPERFLOOR),
 
     ("Meteorite Fragment", ArtifactType.HORIZONTAL_CASE_CUSHION, ArtifactLocations.CRISPGALLERY),
     ## Needs checking, pretty sure some statues will spawn main floor and some crisp
     ("Fertility Statue (Ivory)", ArtifactType.HORIZONTAL_CASE_CUSHION, ArtifactLocations.MAINFLOOR),
     ("Fertility Statue (Bronze)", ArtifactType.HORIZONTAL_CASE_CUSHION, ArtifactLocations.MAINFLOOR),
-    ("Fertility Statue (Gold)", ArtifactType.HORIZONTAL_CASE_CUSHION, ArtifactLocations.CRISPGALLERY),
+    ("Fertility Statue (Gold)", ArtifactType.HORIZONTAL_CASE_CUSHION, ArtifactLocations.MAINFLOOR), # previously put in CRISPGALLERY
     ("Fertility Statue (Silver)", ArtifactType.HORIZONTAL_CASE_CUSHION, ArtifactLocations.CRISPGALLERY),
     ("Fertility Statue (Acajou)", ArtifactType.HORIZONTAL_CASE_CUSHION, ArtifactLocations.MAINFLOOR),
     ## Needs checking, pretty sure some statues will spawn main floor and some upper floor
-    ("Oeuf de Coquard Verdoyant", ArtifactType.HORIZONTAL_CASE_CUSHION, None),
+    ("Oeuf de Coquard Verdoyant", ArtifactType.HORIZONTAL_CASE_CUSHION, ArtifactLocations.LOWERFLOOR),
     ("Oeuf de Coquard de Vouivre", ArtifactType.HORIZONTAL_CASE_CUSHION, ArtifactLocations.LOWERFLOOR),
     ("Oeuf de Coquard Enchanté", ArtifactType.HORIZONTAL_CASE_CUSHION, None),
     ("Oeuf de Coquard Forestier", ArtifactType.HORIZONTAL_CASE_CUSHION, None),
