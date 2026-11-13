@@ -556,7 +556,7 @@ class KortzHeistApp(ttk.Frame):
         last_updated = save_session(Session(
             artifacts=self._current_artifacts(),
             difficulty="Hard" if self.difficulty_var.get() == "Hard" else "Normal",
-            primary_target_value=self.primary_value,
+            primary_target_value=self.primary_value if self.primary_value is not None else 0,
         ))
         self._set_last_updated(last_updated)
 
