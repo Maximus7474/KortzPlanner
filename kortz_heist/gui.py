@@ -11,7 +11,15 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 
 from .catalog import CATALOG_BY_NAME, CATALOG_NAMES
-from .models import Artifact, ArtifactLocations, price_warning
+from .models import (
+    Artifact,
+    ArtifactLocations,
+    LOCATION_CODES,
+    LOCATION_LABELS,
+    LOCATION_OPTIONS,
+    location_code,
+    price_warning,
+)
 from .payout import PayoutEstimate, estimate_payouts
 from .session import (
     Session,
@@ -22,6 +30,14 @@ from .session import (
 )
 from .updater import check_for_updates
 from .solver import solve
+
+# Edit-dialog dropdown entries, e.g. "MF - Main floor".
+LOCATION_CHOICES = [
+    (f"{LOCATION_CODES[location]} - {LOCATION_LABELS[location]}", location)
+    for location in LOCATION_OPTIONS
+]
+LOCATION_BY_CHOICE = dict(LOCATION_CHOICES)
+UNSET_LOCATION_CHOICE = "(not set)"
 
 
 class AutocompleteEntry(ttk.Entry):
@@ -179,7 +195,8 @@ class KortzHeistApp(ttk.Frame):
         self.master = master
 
         # name -> {"type": ArtifactType, "price": int,
-        #          "client_target": bool, "solo_available": bool}
+        #          "client_target": bool, "solo_available": bool,
+        #          "location": ArtifactLocations | None}
         self.items = {}
 
         self.primary_value = 0
@@ -238,19 +255,23 @@ class KortzHeistApp(ttk.Frame):
         table_frame = ttk.Frame(self.setup_page)
         table_frame.pack(fill="both", expand=True, pady=(0, 8))
 
-        columns = ("name", "type", "price", "client", "solo")
+        columns = ("name", "type", "floor", "price", "client", "solo")
         self.tree = ttk.Treeview(table_frame, columns=columns, show="headings", height=10)
         self._headings = {
             "name": "Artifact",
             "type": "Type",
+            "floor": "Floor",
             "price": "Price",
             "client": "Client Target",
             "solo": "Solo OK",
         }
-        widths = {"name": 180, "type": 160, "price": 90, "client": 100, "solo": 80}
+        widths = {
+            "name": 180, "type": 160, "floor": 55,
+            "price": 90, "client": 100, "solo": 80,
+        }
         for col in columns:
             self.tree.heading(col, text=self._headings[col], command=lambda c=col: self._sort_by_column(c))
-            anchor = "center" if col in ("client", "solo") else "w"
+            anchor = "center" if col in ("floor", "client", "solo") else "w"
             self.tree.column(col, width=widths[col], anchor=anchor)
         self.tree.pack(side="left", fill="both", expand=True)
 
@@ -513,6 +534,7 @@ class KortzHeistApp(ttk.Frame):
                 "price": a.value,
                 "client_target": a.is_client_target,
                 "solo_available": a.solo_available,
+                "location": a.location,
             }
         self.difficulty_var.set(session.difficulty)
         self.primary_value = session.primary_target_value
@@ -546,6 +568,7 @@ class KortzHeistApp(ttk.Frame):
                 value=d["price"],
                 is_client_target=d["client_target"],
                 solo_available=d["solo_available"],
+                location=d["location"],
             )
             for name, d in self.items.items()
         ]
@@ -604,6 +627,7 @@ class KortzHeistApp(ttk.Frame):
             "price": price,
             "client_target": False,
             "solo_available": artifact.location != ArtifactLocations.CRISPGALLERY,
+            "location": artifact.location,
         }
 
         self._reset_sort()
@@ -681,6 +705,8 @@ class KortzHeistApp(ttk.Frame):
             return d["type"].value.lower()
         elif self._sort_column == "price":
             return d["price"]
+        elif self._sort_column == "floor":
+            return location_code(d["location"])
         elif self._sort_column == "client":
             return d["client_target"]
         elif self._sort_column == "solo":
@@ -705,6 +731,7 @@ class KortzHeistApp(ttk.Frame):
                 values=(
                     name,
                     d["type"].value,
+                    location_code(d["location"]),
                     f"${d['price']:,}",
                     "\u2611" if d["client_target"] else "\u2610",
                     "\u2611" if d["solo_available"] else "",
@@ -720,7 +747,8 @@ class KortzHeistApp(ttk.Frame):
         col = self.tree.identify_column(event.x)
         if not row:
             return
-        if col == "#4":
+        client_col = f"#{list(self.tree['columns']).index('client') + 1}"
+        if col == client_col:
             self._toggle_client_target(row)
 
     def _toggle_client_target(self, name):
@@ -764,19 +792,30 @@ class KortzHeistApp(ttk.Frame):
         price_entry.focus_set()
         price_entry.select_range(0, tk.END)
 
+        current_choice = next(
+            (label for label, location in LOCATION_CHOICES if location is data["location"]),
+            UNSET_LOCATION_CHOICE,
+        )
+        location_var = tk.StringVar(value=current_choice)
+        ttk.Label(dialog, text="Floor:").grid(row=2, column=0, padx=8, sticky="e")
+        ttk.Combobox(
+            dialog, textvariable=location_var, width=22, state="readonly",
+            values=[UNSET_LOCATION_CHOICE] + [label for label, _ in LOCATION_CHOICES],
+        ).grid(row=2, column=1, padx=8, pady=4, sticky="w")
+
         client_var = tk.BooleanVar(value=data["client_target"])
         ttk.Checkbutton(dialog, text="Client target", variable=client_var).grid(
-            row=2, column=0, columnspan=2, padx=8, sticky="w"
+            row=3, column=0, columnspan=2, padx=8, sticky="w"
         )
 
         solo_text = f"{"\u2611" if data["solo_available"] else "\u2610"} Solo obtainable"
         ttk.Label(dialog, text=solo_text).grid(
-            row=3, column=0, columnspan=2, padx=8, sticky="w"
+            row=4, column=0, columnspan=2, padx=8, sticky="w"
         )
 
         warn_var = tk.StringVar()
         ttk.Label(dialog, textvariable=warn_var, foreground="#a05a00", wraplength=260).grid(
-            row=4, column=0, columnspan=2, padx=8, sticky="w"
+            row=5, column=0, columnspan=2, padx=8, sticky="w"
         )
 
         def save_and_close(event=None):
@@ -792,6 +831,7 @@ class KortzHeistApp(ttk.Frame):
                     return
             data["price"] = new_price
             data["client_target"] = client_var.get()
+            data["location"] = LOCATION_BY_CHOICE.get(location_var.get())
             self._refresh_table()
             self._save()
             dialog.destroy()
@@ -803,7 +843,7 @@ class KortzHeistApp(ttk.Frame):
             dialog.destroy()
 
         btns = ttk.Frame(dialog)
-        btns.grid(row=5, column=0, columnspan=2, pady=8)
+        btns.grid(row=6, column=0, columnspan=2, pady=8)
         ttk.Button(btns, text="Save (Enter)", command=save_and_close).pack(side="left", padx=4)
         ttk.Button(btns, text="Remove item", command=remove_and_close).pack(side="left", padx=4)
         ttk.Button(btns, text="Cancel (Esc)", command=dialog.destroy).pack(side="left", padx=4)
@@ -928,14 +968,16 @@ class KortzHeistApp(ttk.Frame):
 
             tree = ttk.Treeview(
                 card,
-                columns=("space", "value"),
+                columns=("floor", "space", "value"),
                 show="tree headings",
                 height=max(1, len(payout.artifacts)),
             )
             tree.heading("#0", text="Artifact")
+            tree.heading("floor", text="Floor")
             tree.heading("space", text="Space")
             tree.heading("value", text="Value")
             tree.column("#0", width=180, minwidth=120, anchor="w", stretch=True)
+            tree.column("floor", width=50, minwidth=45, anchor="center", stretch=False)
             tree.column("space", width=80, minwidth=60, anchor="center", stretch=False)
             tree.column("value", width=90, minwidth=70, anchor="e", stretch=False)
             tree.pack(fill="x", expand=True, pady=(0, 6))
@@ -951,10 +993,14 @@ class KortzHeistApp(ttk.Frame):
                     tree.insert(
                         "", "end",
                         text=label,
-                        values=(f"{a.space_percent}%", f"${a.value:,}"),
+                        values=(
+                            location_code(a.location),
+                            f"{a.space_percent}%",
+                            f"${a.value:,}",
+                        ),
                     )
             else:
-                tree.insert("", "end", text="(empty bag)", values=("", ""))
+                tree.insert("", "end", text="(empty bag)", values=("", "", ""))
 
             breakdown = ttk.Frame(card)
             breakdown.pack(fill="x")
@@ -1003,7 +1049,11 @@ class KortzHeistApp(ttk.Frame):
                     flag_str = f" [{'/'.join(flags)}]" if flags else ""
 
                     name_display = artifact.name + flag_str
-                    lines.append(f" • {name_display:<26} {artifact.space_percent:>3}%   ${artifact.value:>9,}")
+                    code = location_code(artifact.location)
+                    lines.append(
+                        f" • [{code:<2}] {name_display:<26} "
+                        f"{artifact.space_percent:>3}%   ${artifact.value:>9,}"
+                    )
             else:
                 lines.append(" • (empty bag)")
 
