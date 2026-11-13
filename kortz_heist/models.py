@@ -20,6 +20,44 @@ class ArtifactLocations(Enum):
     LOADINGBAY = "loading_bay"
 
 
+# Two-letter indicator shown next to each artifact in the GUI.
+LOCATION_CODES = {
+    ArtifactLocations.VAULT: "VT",
+    ArtifactLocations.LOWERFLOOR: "BF",
+    ArtifactLocations.MAINFLOOR: "MF",
+    ArtifactLocations.UPPERFLOOR: "TF",
+    ArtifactLocations.CRISPGALLERY: "CG",
+    ArtifactLocations.LOADINGBAY: "LB",
+}
+
+LOCATION_LABELS = {
+    ArtifactLocations.VAULT: "Vault",
+    ArtifactLocations.LOWERFLOOR: "Lower Floor",
+    ArtifactLocations.MAINFLOOR: "Main Floor",
+    ArtifactLocations.UPPERFLOOR: "Upper Floor",
+    ArtifactLocations.CRISPGALLERY: "Crisp Gallery",
+    ArtifactLocations.LOADINGBAY: "Loading Bay",
+}
+
+# Order used by the location dropdown in the edit dialog.
+LOCATION_OPTIONS = [
+    ArtifactLocations.LOWERFLOOR,
+    ArtifactLocations.MAINFLOOR,
+    ArtifactLocations.UPPERFLOOR,
+    ArtifactLocations.CRISPGALLERY,
+    ArtifactLocations.LOADINGBAY,
+    ArtifactLocations.VAULT,
+]
+UNKNOWN_LOCATION_CODE = "--"
+
+
+def location_code(location: ArtifactLocations | None) -> str:
+    """Two-letter indicator for `location`, or "--" when unknown."""
+    if location is None:
+        return UNKNOWN_LOCATION_CODE
+    return LOCATION_CODES.get(location, UNKNOWN_LOCATION_CODE)
+
+
 # Space each artifact type takes up, as a percentage of a single bag.
 SPACE_COST_PERCENT = {
     ArtifactType.ARTWORK: 50,
@@ -74,6 +112,8 @@ class Artifact:
         running the heist with only one player. The CLI/solver will not
         silently drop these - see cli.run() - it just flags them for a
         solo player to double-check before committing to a route.
+    location: where the item is displayed in the museum - defaults to the
+        catalog's value, editable per heist when the actual spot differs.
     """
 
     name: str
@@ -81,6 +121,7 @@ class Artifact:
     value: int
     is_client_target: bool = False
     solo_available: bool = True
+    location: ArtifactLocations | None = None
 
     @property
     def space_percent(self) -> int:
