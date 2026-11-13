@@ -91,7 +91,7 @@ def build_session(
     artifacts = [
         Artifact(
             name=name,
-            type=CATALOG_BY_NAME[name],
+            type=CATALOG_BY_NAME[name].type,
             value=price,
             is_client_target=name in client_targets,
             solo_available=name not in solo_unavailable,
