@@ -136,9 +136,15 @@ reuse prompt / use File > New session in the GUI) and enter a new one.
 - **Client Target / Solo OK**: click either cell in an item's row to
   toggle it (☐/☑). Only three items can be marked as the client's request
   at once - the app will tell you if you try a fourth.
+- **Floor**: the Floor column shows each artifact's two-letter location -
+  `BF` lower floor, `MF` main floor, `TF` upper floor, `CG` Crisp Gallery,
+  `LB` Loading Bay, `VT` vault - and the plan page repeats it per bag so
+  you can route the pickup floor by floor.
 - **Fix a mistake**: double-click a row to open an edit dialog (change
-  price, toggle flags, or remove the item entirely); Enter saves, Esc
-  cancels. Or select a row and click "Remove selected" / press Delete.
+  price, pick a different floor from the dropdown if this heist's spot
+  differs from the catalog, toggle flags, or remove the item entirely);
+  Enter saves, Esc cancels. Or select a row and click "Remove selected" /
+  press Delete.
 - **File menu**: "New session" clears everything, "Reload saved session" reverts to what's on disk, discarding unsaved changes.
 - **Primary target value**: enter the value of the primary target in the
   configuration section. It is paid in full to you (P1) and is never part
