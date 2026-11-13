@@ -13,7 +13,7 @@ from typing import Literal, NamedTuple, get_args
 from collections.abc import Iterable
 
 from .catalog import CATALOG_BY_NAME
-from .models import Artifact, ArtifactType
+from .models import Artifact, ArtifactLocations, ArtifactType
 
 APP_NAME = "KortzHeistOptimizer"
 
@@ -123,6 +123,7 @@ def save_session(session: Session, path: Path = DEFAULT_SESSION_PATH) -> str:
                 "value": a.value,
                 "is_client_target": a.is_client_target,
                 "solo_available": a.solo_available,
+                "location": a.location.value if a.location else None,
             }
             for a in session.artifacts
         ],
@@ -132,6 +133,23 @@ def save_session(session: Session, path: Path = DEFAULT_SESSION_PATH) -> str:
 
     path.write_text(json.dumps(payload, indent=2))
     return last_updated
+
+
+def _load_location(item: dict) -> ArtifactLocations | None:
+    """Location stored with a saved artifact.
+
+    Sessions saved before locations were tracked fall back to the catalog
+    default instead of showing every row as unknown.
+    """
+    if "location" in item:
+        raw = item["location"]
+        return ArtifactLocations(raw) if raw else None
+
+    catalog_entry = CATALOG_BY_NAME.get(item["name"])
+    if catalog_entry and catalog_entry.location:
+        return ArtifactLocations(catalog_entry.location)
+
+    return None
 
 
 def load_session(path: Path = DEFAULT_SESSION_PATH) -> Session | None:
@@ -146,6 +164,7 @@ def load_session(path: Path = DEFAULT_SESSION_PATH) -> Session | None:
             value=item["value"],
             is_client_target=item["is_client_target"],
             solo_available=item["solo_available"],
+            location=_load_location(item),
         )
         for item in raw["artifacts"]
     ]
